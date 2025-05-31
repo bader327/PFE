@@ -9,9 +9,18 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@fullcalendar/daygrid": "^6.1.17",
+    "@fullcalendar/interaction": "^6.1.17",
+    "@fullcalendar/react": "^6.1.17",
+    "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^3.3.4",
+    "@prisma/client": "^6.8.2",
     "@types/react-big-calendar": "^1.8.9",
+    "date-fns": "^4.1.0",
+    "file-saver": "^2.0.5",
     "framer-motion": "^12.10.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
     "lucide-react": "^0.508.0",
     "moment": "^2.30.1",
     "next": "14.1.0",
@@ -20,6 +29,8 @@
     "react": "^18.2.0",
     "react-big-calendar": "^1.13.2",
     "react-calendar": "^5.0.0",
+    "react-datepicker": "^8.3.0",
+    "react-day-picker": "^9.7.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.56.1",
     "react-icons": "^5.5.0",
@@ -27,13 +38,16 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/date-fns": "^2.5.3",
     "@types/node": "^20.11.25",
     "@types/react": "^18.2.64",
+    "@types/react-datepicker": "^6.2.0",
     "@types/react-dom": "^18.2.21",
     "autoprefixer": "^10.4.18",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.1.0",
     "postcss": "^8.4.35",
+    "prisma": "^6.8.2",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.4.2"
   },
@@ -42,5 +56,11 @@
   },
   "overrides": {
     "@tailwindcss/oxide-win32-x64-msvc": "3.4.1"
-  }
+  },
+  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+  "main": "next.config.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
 }

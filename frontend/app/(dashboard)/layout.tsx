@@ -1,5 +1,3 @@
-
-
 import Image from "next/image";
 import Link from "next/link";
 import Menu from "../components/Menu";
@@ -13,20 +11,23 @@ export default function DashboardLayout({
   return (
     <div className="h-screen flex">
       {/* LEFT */}
-      <div className="w-[14%] md:w-[8%] lg:w-[16%] xl:w-[14%] p-4">
+      <div className="w-[16%] p-6 bg-white shadow-md">
         <Link
           href="/"
-          className="flex items-center justify-center lg:justify-start gap-2"
+          className="flex items-center justify-center lg:justify-start gap-3 mb-6"
         >
-          <Image src="/logo.png" alt="logo" width={32} height={32} />
-          <span className="hidden lg:block font-bold">FPS APP</span>
+          <Image src="/coficab.png" alt="Coficab Logo" width={70} height={70} />
+          <span className="hidden lg:block text-xl font-extrabold text-[#003366]">
+            FPS App
+          </span>
         </Link>
         <Menu />
       </div>
+
       {/* RIGHT */}
-      <div className="w-[86%] md:w-[92%] lg:w-[84%] xl:w-[86%] bg-[#F7F8FA] overflow-scroll flex flex-col">
+      <div className="w-[84%] bg-[#F7F8FA] overflow-auto flex flex-col">
         <Navbar />
-        {children}
+        <main className="p-6">{children}</main>
       </div>
     </div>
   );

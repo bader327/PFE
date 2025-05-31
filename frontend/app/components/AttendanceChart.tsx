@@ -1,96 +1,114 @@
 "use client";
-import Image from "next/image";
+import { useState } from "react";
 import {
   BarChart,
   Bar,
-  Rectangle,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
 } from "recharts";
 
-const data = [
-  {
-    name: "ligne 1",
-    conforme: 60,
-    NOK: 40,
-  },
-  {
-    name: "ligne 2",
-    conforme: 70,
-    NOK: 60,
-  },
-  {
-    name: "ligne 3",
-    conforme: 90,
-    NOK: 75,
-  },
-  {
-    name: "ligne 4",
-    conforme: 90,
-    NOK: 75,
-  },
-  {
-    name: "ligne 5",
-    conforme: 65,
-    NOK: 55,
-  },
-  {
-    name: "ligne 6",
-    conforme: 65,
-    NOK: 55,
-  },
-  {
-    name: "ligne 7",
-    conforme: 65,
-    NOK: 55,
-  },
+const lignes = [
+  "Ligne 1",
+  "Ligne 2",
+  "Ligne 3",
+  "Ligne 4",
+  "Ligne 5",
+  "Ligne 6",
+  "Ligne 7",
 ];
 
-const AttendanceChart = () => {
+const initialData = lignes.reduce((acc, ligne) => {
+  acc[ligne] = { conforme: 0, nonConforme: 0 };
+  return acc;
+}, {} as Record<string, { conforme: number; nonConforme: number }>);
+
+export default function AttendanceChart() {
+  const [selectedLine, setSelectedLine] = useState("Ligne 1");
+  const [data, setData] = useState(initialData);
+  const [conforme, setConforme] = useState("");
+  const [nonConforme, setNonConforme] = useState("");
+
+  const handleSave = () => {
+    setData((prev) => ({
+      ...prev,
+      [selectedLine]: {
+        conforme: Number(conforme),
+        nonConforme: Number(nonConforme),
+      },
+    }));
+    setConforme("");
+    setNonConforme("");
+  };
+
+  const chartData = Object.entries(data).map(([name, values]) => ({
+    name,
+    Conforme: values.conforme,
+    "Non Conforme": values.nonConforme,
+  }));
+
   return (
-    <div className="bg-white rounded-lg p-4 h-full">
-      <div className="flex justify-between items-center">
-        <h1 className="text-lg font-semibold">Products (per day)</h1>
-        <Image src="/moreDark.png" alt="" width={20} height={20} />
+    <div className="bg-white p-6 rounded-xl shadow-md w-full">
+      <h2 className="text-xl font-semibold mb-4 text-center">
+        Production par Ligne
+      </h2>
+
+      {/* Lignes sélection */}
+      <div className="flex flex-wrap justify-center gap-2 mb-4">
+        {lignes.map((ligne) => (
+          <button
+            key={ligne}
+            onClick={() => setSelectedLine(ligne)}
+            className={`px-3 py-1 text-sm rounded-full border ${
+              selectedLine === ligne
+                ? "bg-blue-500 text-white"
+                : "bg-gray-100 text-gray-700"
+            }`}
+          >
+            {ligne}
+          </button>
+        ))}
       </div>
-      <ResponsiveContainer width="100%" height="90%">
-        <BarChart width={500} height={300} data={data} barSize={20}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ddd" />
-          <XAxis
-            dataKey="name"
-            axisLine={false}
-            tick={{ fill: "#d1d5db" }}
-            tickLine={false}
-          />
-          <YAxis axisLine={false} tick={{ fill: "#d1d5db" }} tickLine={false} />
-          <Tooltip
-            contentStyle={{ borderRadius: "10px", borderColor: "lightgray" }}
-          />
-          <Legend
-            align="left"
-            verticalAlign="top"
-            wrapperStyle={{ paddingTop: "20px", paddingBottom: "40px" }}
-          />
-          <Bar
-            dataKey="conforme"
-            fill="#FAE27C"
-            legendType="circle"
-            radius={[10, 10, 0, 0]}
-          />
-          <Bar
-            dataKey="NOK"
-            fill="#C3EBFA"
-            legendType="circle"
-            radius={[10, 10, 0, 0]}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+
+      {/* Formulaire de saisie */}
+      <div className="flex flex-wrap justify-center gap-4 mb-4">
+        <input
+          type="number"
+          placeholder="Conforme"
+          value={conforme}
+          onChange={(e) => setConforme(e.target.value)}
+          className="w-28 px-2 py-1 text-sm border rounded-md"
+        />
+        <input
+          type="number"
+          placeholder="Non Conforme"
+          value={nonConforme}
+          onChange={(e) => setNonConforme(e.target.value)}
+          className="w-28 px-2 py-1 text-sm border rounded-md"
+        />
+        <button
+          onClick={handleSave}
+          className="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded-md text-sm"
+        >
+          Enregistrer
+        </button>
+      </div>
+
+      {/* Graphique */}
+      <div className="w-full h-72">
+        <ResponsiveContainer>
+          <BarChart data={chartData}>
+            <XAxis dataKey="name" interval={0} />
+            <YAxis />
+            <Tooltip />
+            <Legend wrapperStyle={{ fontSize: "12px" }} />
+            <Bar dataKey="Conforme" fill="#4ade80" />
+            <Bar dataKey="Non Conforme" fill="#f87171" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
-};
-
-export default AttendanceChart;
+}

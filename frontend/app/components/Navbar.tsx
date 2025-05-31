@@ -1,41 +1,78 @@
+"use client";
+import { useState } from "react";
 import Image from "next/image";
 
 const Navbar = () => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   return (
-    <div className="flex items-center justify-between p-4">
-      {/* SEARCH BAR */}
-      <div className="hidden md:flex items-center gap-2 text-xs rounded-full ring-[1.5px] ring-gray-300 px-2">
-        <Image src="/search.png" alt="" width={14} height={14} />
+    <nav className="bg-white px-4 py-3 shadow-sm rounded-xl flex items-center justify-between relative">
+      {/* Titre Dashboard */}
+      <div className="text-lg font-semibold text-gray-800">Dashboard</div>
+
+      {/* Barre de recherche (Desktop uniquement) */}
+      <div className="hidden md:flex items-center bg-gray-100 px-3 py-2 rounded-full w-[250px]">
+        <Image
+          src="/search.png"
+          alt="Search Icon"
+          width={16}
+          height={16}
+          className="opacity-60"
+        />
         <input
           type="text"
-          placeholder="Search..."
-          className="w-[200px] p-2 bg-transparent outline-none"
+          placeholder="Rechercher..."
+          className="ml-2 bg-transparent outline-none text-sm w-full text-gray-700"
         />
       </div>
-      {/* ICONS AND USER */}
-      <div className="flex items-center gap-6 justify-end w-full">
-        <div className="bg-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer">
-          <Image src="/message.png" alt="" width={20} height={20} />
+
+      {/* Utilisateur avec dropdown */}
+      <div className="flex items-center gap-4">
+        <div className="relative">
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-2"
+          >
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-800">John Doe</p>
+              <p className="text-xs text-gray-500">Administrateur</p>
+            </div>
+            <Image
+              src="/avatar.png"
+              alt="User"
+              width={40}
+              height={40}
+              className="rounded-full border border-gray-200"
+            />
+          </button>
+
+          {/* Dropdown Menu */}
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg py-2 z-50">
+              <a
+                href="#"
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Profil
+              </a>
+              <a
+                href="#"
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Paramètres
+              </a>
+              <hr className="my-1" />
+              <a
+                href="#"
+                className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+              >
+                Déconnexion
+              </a>
+            </div>
+          )}
         </div>
-        <div className="bg-white rounded-full w-7 h-7 flex items-center justify-center cursor-pointer relative">
-          <Image src="/announcement.png" alt="" width={20} height={20} />
-          <div className="absolute -top-3 -right-3 w-5 h-5 flex items-center justify-center bg-purple-500 text-white rounded-full text-xs">
-            1
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-xs leading-3 font-medium">John Doe</span>
-          <span className="text-[10px] text-gray-500 text-right">Admin</span>
-        </div>
-        <Image
-          src="/avatar.png"
-          alt=""
-          width={36}
-          height={36}
-          className="rounded-full"
-        />
       </div>
-    </div>
+    </nav>
   );
 };
 
