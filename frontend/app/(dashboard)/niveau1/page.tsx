@@ -1,23 +1,96 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation"; // ✅ Hook pour la navigation
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2, FileText, Save, ArrowRight } from "lucide-react";
+import FpsReport from "../../components/FpsReport";
 
 const Niveau1 = () => {
-  const router = useRouter(); // ✅ Initialisation du routeur
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fpsData, setFpsData] = useState<any>(null);
+  const [showReport, setShowReport] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  
+  // Récupérer l'ID du FPS depuis les paramètres d'URL
+  const fpsId = searchParams.get('id');
+  
+  // Charger les données du FPS au chargement de la page
+  useEffect(() => {
+    const fetchFpsData = async () => {
+      if (!fpsId) return;
+      
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const response = await fetch(`/api/fps?id=${fpsId}&level=1`);
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des données FPS');
+        }
+        
+        const data = await response.json();
+        setFpsData(data);
+      } catch (err) {
+        console.error('Error fetching FPS data:', err);
+        setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchFpsData();
+  }, [fpsId]);
 
-  // Fonction temporaire pour les boutons
-  const handleSave = () => {
-    alert("Enregistrement effectué (fonction à implémenter)");
+  // Fonction pour enregistrer les modifications
+  const handleSave = async () => {
+    setLoading(true);
+    
+    try {
+      const response = await fetch(`/api/fps`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: fpsData.id,
+          level: 1,
+          ...fpsData,
+          enregistrer: true
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Erreur lors de l'enregistrement");
+      }
+      
+      const updatedData = await response.json();
+      setFpsData(updatedData);
+      alert("Enregistrement effectué avec succès");
+    } catch (err) {
+      console.error("Erreur lors de l'enregistrement:", err);
+      alert("Erreur lors de l'enregistrement");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Fonction pour générer et afficher le PDF
   const handleExportPDF = () => {
-    alert("Export PDF en cours (fonction à implémenter)");
+    setShowReport(true);
   };
 
-  // ✅ Fonction pour passer à la page Niveau 2
+  // Fonction pour passer à la page Niveau 2
   const handlePasserNiveau2 = () => {
-    router.push("/niveau2");
+    if (fpsId) {
+      router.push(`/niveau2?fps1Id=${fpsId}`);
+    } else {
+      router.push("/niveau2");
+    }
   };
 
   return (

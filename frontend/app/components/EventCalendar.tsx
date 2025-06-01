@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { MouseEvent, useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
@@ -12,7 +12,13 @@ type Event = {
   date: string;
 };
 
-const EventCalendar = () => {
+interface EventCalendarProps {
+  setSelectedDate?: (date: Date) => void;
+}
+
+type CalendarValue = Date | null | [Date | null, Date | null];
+
+const EventCalendar = ({ setSelectedDate }: EventCalendarProps) => {
   const [value, onChange] = useState<Date>(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [form, setForm] = useState({
@@ -23,8 +29,16 @@ const EventCalendar = () => {
 
   const selectedDateStr = value.toISOString().split("T")[0];
 
-  const handleCalendarChange = (v: Date) => {
-    onChange(v);
+  const handleCalendarChange = (
+    newValue: CalendarValue,
+    event: MouseEvent<HTMLButtonElement>
+  ) => {
+    if (newValue instanceof Date) {
+      onChange(newValue);
+      if (setSelectedDate) {
+        setSelectedDate(newValue);
+      }
+    }
   };
 
   const handleChange = (

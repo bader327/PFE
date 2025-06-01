@@ -1,7 +1,9 @@
 "use client";
+import { BarChart3 } from "lucide-react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import "react-datepicker/dist/react-datepicker.css";
 import {
   Bar,
   BarChart,
@@ -11,40 +13,74 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
-  YAxis,
+  YAxis
 } from "recharts";
 import Announcements from "../../../components/Announcments";
 import EventCalendar from "../../../components/EventCalendar";
+import HourlyAnalysis from "../../../components/HourlyAnalysis";
 
+// Définition des seuils pour les KPIs
+const seuils = {
+  ftq: 85,
+  tauxProduction: 80,
+  productionCible: 100,
+  tauxRejets: 5, // seuil max
+};
+
+// Generate random data for KPI charts
 const generateRandomKpiData = () => {
-  const days = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-  return days.map((day) => ({
-    day,
-    productionRate: Math.random() * 100,
-    rejectRate: Math.random() * 100,
-    conformityRate: Math.random() * 100,
-    targetProduction: Math.random() * 300,
-  }));
+  const data = [];
+  const categories = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  for (const month of categories) {
+    data.push({
+      name: month,
+      ftq: Math.floor(Math.random() * 30) + 70,
+      production: Math.floor(Math.random() * 40) + 60,
+      rejets: Math.floor(Math.random() * 20) + 1,
+      cible: Math.floor(Math.random() * 20) + 80,
+    });
+  }
+  return data;
 };
 
 export default function LignePage() {
   const { id } = useParams();
   const router = useRouter();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<any[]>([]);
   const [randomData, setRandomData] = useState({
-    conformes: 0,
-    nonConformes: 0,
-    heures: 0,
+    conformes: 87,
+    nonConformes: 13,
+    heures: 768
   });
   const [kpis, setKpis] = useState({
-    productionRate: 0,
-    rejectRate: 0,
-    conformityRate: 0,
-    targetProduction: 0,
+    productionRate: 85,
+    rejectRate: 15,
+    conformityRate: 87,
+    targetProduction: 95
   });
   const [kpiChartData, setKpiChartData] = useState<any[]>([]);
+  const [fpsAlert, setFpsAlert] = useState<string | number | null>(null);
   const [calendarDate, setCalendarDate] = useState(new Date());
-  const [fpsAlert, setFpsAlert] = useState<number | null>(null); // Alerte FPS
+  const [kpiData, setKpiData] = useState<any>({
+    summary: {
+      produitsConformes: 0,
+      produitsNonConformes: 0,
+      bobinesIncompletes: 0,
+      ftq: 0,
+      tauxProduction: 0,
+      tauxRejets: 0,
+      productionCible: 0
+    },
+    chartData: [],
+    files: [],
+    hourlyData: []
+  });
+  const [fpsRecords, setFpsRecords] = useState<any[]>([]);
+  const [showFpsModal, setShowFpsModal] = useState(false);
+  const [selectedHour, setSelectedHour] = useState<string | null>(null);
 
   useEffect(() => {
     // Générer des valeurs aléatoires
@@ -239,10 +275,19 @@ export default function LignePage() {
                 </ResponsiveContainer>
               </ChartBox>
             </div>
-          )}
+          )}          {/* Hourly Analysis Section */}
+          <div className="space-y-4 mt-8">
+            <div className="flex items-center">
+              <BarChart3 className="mr-2 h-6 w-6 text-blue-600" />
+              <h2 className="text-2xl font-bold">Analyse Horaire de la Production</h2>
+            </div>
+            <div className="bg-white rounded-lg shadow">
+              <HourlyAnalysis ligneId={id as string} date={selectedDate.toISOString().split('T')[0]} />
+            </div>
+          </div>
 
           {/* KPI sur 7 jours */}
-          <div className="space-y-4">
+          <div className="space-y-4 mt-8">
             <h2 className="text-2xl font-bold">Évolution des KPI (7 jours)</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <KpiChart

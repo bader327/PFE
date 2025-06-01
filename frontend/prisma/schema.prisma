@@ -4,41 +4,40 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // ou "sqlite"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
-
 }
-model Announcement{
-  id        Int      @id @default(autoincrement())
+
+model Announcement {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   title     String
   content   String
-  ligneId   Int?
+  ligneId   String?  @db.ObjectId
   createdAt DateTime @default(now())
   ligne     Ligne?   @relation(fields: [ligneId], references: [id])
 }
 
-
 model Event {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   title       String
   description String
   date        DateTime
-  ligneId     Int?
+  ligneId     String?  @db.ObjectId
   ligne       Ligne?   @relation(fields: [ligneId], references: [id])
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   email     String   @unique
   password  String
   userType  UserType @default(OPERATEUR)
-  ligneId   Int?     // si un utilisateur peut être sans ligne, sinon enlever le ?
+  ligneId   String?  @db.ObjectId // si un utilisateur peut être sans ligne, sinon enlever le ?
   ligne     Ligne?   @relation(fields: [ligneId], references: [id])
 }
 
 model Ligne {
-  id            Int           @id @default(autoincrement())
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
   name          String
   users         User[]
   announcements Announcement[]
@@ -46,27 +45,38 @@ model Ligne {
   files         File[]
 }
 
-
-
 model File {
-  id                   Int       @id @default(autoincrement())
-  path                 String
-  ligneId              Int?
-  ligne                Ligne?    @relation(fields: [ligneId], references: [id])
-  produitsConformes     Int
-  produitsNonConformes  Int
-  bobinesIncompletes   Int
-  ftq                  Float
-  tauxProduction       Float
-  tauxRejets           Float
-  productionCible      Int
-  uploadedAt           DateTime  @default(now())
-  fps1                 Fps1?
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  path                String
+  ligneId             String?   @db.ObjectId
+  hourlyData          HourlyData[]
+  fps1                Fps1?
+  
+  // Extracted data
+  produitsConformes     Int      @default(0)
+  produitsNonConformes  Int      @default(0)
+  bobinesIncompletes    Int      @default(0)
+  ftq                   Float    @default(0)
+  tauxProduction        Float    @default(0)
+  tauxRejets           Float    @default(0)
+  productionCible       Int      @default(0)
+  uploadedAt           DateTime @default(now())
+  ligne               Ligne?   @relation(fields: [ligneId], references: [id])
+}
+
+model HourlyData {
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
+  fileId               String    @db.ObjectId
+  hour                 Int
+  produitsConformes    Int
+  produitsNonConformes Int
+  total                Int
+  file                 File     @relation(fields: [fileId], references: [id])
 }
 
 model Fps1 {
-  id             Int     @id @default(autoincrement())
-  fileId         Int     @unique
+  id             String  @id @default(auto()) @map("_id") @db.ObjectId
+  fileId         String  @unique @db.ObjectId
   file           File    @relation(fields: [fileId], references: [id])
   operateur      String
   defaut         String
@@ -80,27 +90,27 @@ model Fps1 {
 }
 
 model Fps2 {
-  id                 Int      @id @default(autoincrement())
-  fps1Id             Int      @unique
-  fps1               Fps1     @relation(fields: [fps1Id], references: [id])
-  chefEquipeProd     String
-  chefEquipeQualite  String
-  probleme           String
-  numeroBobine       String
-  causeApparente     String
-  cause1             String
-  cause2             String
-  cause3             String
-  cause4             String
-  action             String
-  enregistrer        Boolean  @default(false)
-  passerNiveau2      Boolean  @default(false)
-  fps3               Fps3?
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  fps1Id            String  @unique @db.ObjectId
+  fps1              Fps1    @relation(fields: [fps1Id], references: [id])
+  chefEquipeProd    String
+  chefEquipeQualite String
+  probleme          String
+  numeroBobine      String
+  causeApparente    String
+  cause1            String
+  cause2            String
+  cause3            String
+  cause4            String
+  action            String
+  enregistrer       Boolean @default(false)
+  passerNiveau2     Boolean @default(false)
+  fps3              Fps3?
 }
 
 model Fps3 {
-  id                    Int      @id @default(autoincrement())
-  fps2Id                Int      @unique
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  fps2Id                String   @unique @db.ObjectId
   fps2                  Fps2     @relation(fields: [fps2Id], references: [id])
   handeled              Boolean  @default(false)
   d1Equipe              String

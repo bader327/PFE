@@ -1,0 +1,278 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2, FileText, Save, ArrowRight } from "lucide-react";
+import FpsReport from "../../components/FpsReport";
+
+const Niveau1 = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fpsData, setFpsData] = useState<any>(null);
+  const [showReport, setShowReport] = useState(false);
+  
+  // Récupérer l'ID du FPS depuis les paramètres d'URL
+  const fpsId = searchParams.get('id');
+  
+  // Charger les données du FPS au chargement de la page
+  useEffect(() => {
+    const fetchFpsData = async () => {
+      if (!fpsId) return;
+      
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const response = await fetch(`/api/fps?id=${fpsId}&level=1`);
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des données FPS');
+        }
+        
+        const data = await response.json();
+        setFpsData(data);
+      } catch (err) {
+        console.error('Error fetching FPS data:', err);
+        setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchFpsData();
+  }, [fpsId]);
+
+  // Fonction pour enregistrer les modifications
+  const handleSave = async () => {
+    setLoading(true);
+    
+    try {
+      const response = await fetch(`/api/fps`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: fpsData.id,
+          level: 1,
+          ...fpsData,
+          enregistrer: true
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Erreur lors de l'enregistrement");
+      }
+      
+      const updatedData = await response.json();
+      setFpsData(updatedData);
+      alert("Enregistrement effectué avec succès");
+    } catch (err) {
+      console.error("Erreur lors de l'enregistrement:", err);
+      alert("Erreur lors de l'enregistrement");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fonction pour générer et afficher le PDF
+  const handleExportPDF = () => {
+    setShowReport(true);
+  };
+
+  // Fonction pour passer à la page Niveau 2
+  const handlePasserNiveau2 = () => {
+    if (fpsId) {
+      router.push(`/niveau2?fps1Id=${fpsId}`);
+    } else {
+      router.push("/niveau2");
+    }
+  };
+
+  return (
+    <div className="p-6 bg-gray-100 min-h-screen">
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-lg text-gray-600">Chargement des données...</span>
+        </div>
+      ) : error ? (
+        <div className="bg-red-100 border-l-4 border-red-500 p-4 mb-6 rounded-lg">
+          <p className="text-red-700">{error}</p>
+        </div>
+      ) : (
+        <>
+          {showReport ? (
+            <div className="mb-6">
+              <button
+                onClick={() => setShowReport(false)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg mb-4"
+              >
+                Retour au formulaire
+              </button>
+              <FpsReport fps={fpsData} />
+            </div>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold text-center mb-6">
+                FPS - Niveau 1 : Détection initiale
+              </h1>
+
+              <div className="bg-white shadow-lg rounded-lg p-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-gray-700 mb-1">Identifiant FPS</label>
+                    <input
+                      type="text"
+                      value={fpsData?.id || ''}
+                      disabled
+                      className="w-full p-2 border border-gray-300 rounded bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 mb-1">Opérateur</label>
+                    <input
+                      type="text"
+                      value={fpsData?.operateur || ''}
+                      onChange={(e) => setFpsData({...fpsData, operateur: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-gray-700 mb-1">Type de défaut</label>
+                    <input
+                      type="text"
+                      value={fpsData?.defaut || ''}
+                      onChange={(e) => setFpsData({...fpsData, defaut: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 mb-1">Produit</label>
+                    <input
+                      type="text"
+                      value={fpsData?.produit || ''}
+                      onChange={(e) => setFpsData({...fpsData, produit: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-gray-700 mb-1">Numéro de bobine</label>
+                    <input
+                      type="text"
+                      value={fpsData?.numeroBobine || ''}
+                      onChange={(e) => setFpsData({...fpsData, numeroBobine: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 mb-1">Date détection</label>
+                    <input
+                      type="text"
+                      value={fpsData?.file ? new Date(fpsData.file.uploadedAt).toLocaleDateString() : ''}
+                      disabled
+                      className="w-full p-2 border border-gray-300 rounded bg-gray-50"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block text-gray-700 mb-1">Cause identifiée</label>
+                  <textarea
+                    value={fpsData?.cause || ''}
+                    onChange={(e) => setFpsData({...fpsData, cause: e.target.value})}
+                    rows={3}
+                    className="w-full p-2 border border-gray-300 rounded"
+                  ></textarea>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block text-gray-700 mb-1">Actions correctives</label>
+                  <textarea
+                    value={fpsData?.actions || ''}
+                    onChange={(e) => setFpsData({...fpsData, actions: e.target.value})}
+                    rows={3}
+                    className="w-full p-2 border border-gray-300 rounded"
+                  ></textarea>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={fpsData?.fpsNiveau1 || false}
+                      onChange={(e) => setFpsData({...fpsData, fpsNiveau1: e.target.checked})}
+                      className="mr-2"
+                    />
+                    <span className="text-gray-700">Valider le FPS Niveau 1</span>
+                  </label>
+                </div>
+              </div>
+              
+              {/* Production metrics if available */}
+              {fpsData?.file && (
+                <div className="bg-white shadow-lg rounded-lg p-6 mb-6">
+                  <h2 className="text-xl font-semibold mb-4">Métriques de Production</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600">Produits conformes</p>
+                      <p className="font-medium text-lg">{fpsData.file.produitsConformes}</p>
+                    </div>
+                    <div className="bg-red-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600">Produits non conformes</p>
+                      <p className="font-medium text-lg">{fpsData.file.produitsNonConformes}</p>
+                    </div>
+                    <div className="bg-yellow-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600">Bobines incomplètes</p>
+                      <p className="font-medium text-lg">{fpsData.file.bobinesIncompletes}</p>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600">FTQ</p>
+                      <p className="font-medium text-lg">{fpsData.file.ftq.toFixed(2)}%</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Boutons d'action */}
+              <div className="flex flex-wrap justify-end gap-4">
+                <button
+                  onClick={handleSave}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  <Save className="w-5 h-5" />
+                  Enregistrer
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  <FileText className="w-5 h-5" />
+                  Générer PDF
+                </button>
+                <button
+                  onClick={handlePasserNiveau2}
+                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                  Passer au Niveau 2
+                </button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default Niveau1;

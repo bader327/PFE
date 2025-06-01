@@ -56,8 +56,7 @@ const Announcements = () => {
   );
 
   return (
-    <div className="bg-white p-4 rounded-md">
-      <Calendar
+    <div className="bg-white p-4 rounded-md">      <Calendar
         value={selectedDate}
         onChange={(date: any) => setSelectedDate(date)}
       />

@@ -1,0 +1,537 @@
+"use client";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  Area,
+  AreaChart,
+} from "recharts";
+import Announcements from "../../../components/Announcments";
+import EventCalendar from "../../../components/EventCalendar";
+import UploadButton from "../../../components/UploadButton";
+import { Loader2, AlertCircle, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+
+// Définition des seuils pour les KPIs
+const seuils = {
+  ftq: 85,
+  tauxProduction: 80,
+  productionCible: 100,
+  tauxRejets: 5, // seuil max
+};
+
+export default function LignePage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [kpiData, setKpiData] = useState<any>({
+    summary: {
+      produitsConformes: 0,
+      produitsNonConformes: 0,
+      bobinesIncompletes: 0,
+      ftq: 0,
+      tauxProduction: 0,
+      tauxRejets: 0,
+      productionCible: 0
+    },
+    chartData: [],
+    files: [],
+    hourlyData: []
+  });
+  const [fpsRecords, setFpsRecords] = useState<any[]>([]);
+  const [showFpsModal, setShowFpsModal] = useState(false);
+  const [selectedHour, setSelectedHour] = useState<string | null>(null);
+  const [modalContent, setModalContent] = useState<{
+    title: string;
+    data: any[];
+    isOpen: boolean;
+  }>({
+    title: "",
+    data: [],
+    isOpen: false,
+  });
+  
+  // Fonction pour formater la date en chaîne YYYY-MM-DD pour l'API
+  const formatDateForApi = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  };
+  
+  // Fonction pour grouper les données par heure
+  const groupDataByHour = (files: any[]) => {
+    const hourlyData: Record<string, any> = {};
+    
+    files.forEach(file => {
+      const date = new Date(file.uploadedAt);
+      const hour = date.getHours();
+      const hourKey = hour < 10 ? `0${hour}:00` : `${hour}:00`;
+      
+      if (!hourlyData[hourKey]) {
+        hourlyData[hourKey] = {
+          hour: hourKey,
+          produitsConformes: 0,
+          produitsNonConformes: 0,
+          bobinesIncompletes: 0,
+          ftq: 0,
+          tauxProduction: 0,
+          tauxRejets: 0,
+          count: 0,
+          files: []
+        };
+      }
+      
+      hourlyData[hourKey].produitsConformes += file.produitsConformes;
+      hourlyData[hourKey].produitsNonConformes += file.produitsNonConformes;
+      hourlyData[hourKey].bobinesIncompletes += file.bobinesIncompletes;
+      hourlyData[hourKey].ftq += file.ftq;
+      hourlyData[hourKey].tauxProduction += file.tauxProduction;
+      hourlyData[hourKey].tauxRejets += file.tauxRejets;
+      hourlyData[hourKey].count += 1;
+      hourlyData[hourKey].files.push(file);
+    });
+    
+    // Calculate averages where needed
+    Object.keys(hourlyData).forEach(key => {
+      const data = hourlyData[key];
+      if (data.count > 0) {
+        data.ftq = data.ftq / data.count;
+        data.tauxProduction = data.tauxProduction / data.count;
+        data.tauxRejets = data.tauxRejets / data.count;
+      }
+    });
+    
+    return Object.values(hourlyData).sort((a, b) => 
+      a.hour.localeCompare(b.hour)
+    );
+  };
+  
+  // Récupérer les données KPI pour la ligne sélectionnée
+  useEffect(() => {
+    const fetchLigneData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/kpi?ligneId=${id}&date=${formatDateForApi(selectedDate)}`);
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des données de la ligne');
+        }
+        
+        const data = await response.json();
+        
+        // Group data by hour for hourly analysis
+        const hourlyData = groupDataByHour(data.files);
+        
+        setKpiData({
+          ...data,
+          hourlyData
+        });
+        
+        // Check for FPS records
+        const fpsResponse = await fetch(`/api/fps?level=1`);
+        if (fpsResponse.ok) {
+          const fpsData = await fpsResponse.json();
+          // Filter FPS records for this line and date
+          const relevantFps = fpsData.filter((fps: any) => {
+            const fpsDate = new Date(fps.file.uploadedAt);
+            const fpsDateString = formatDateForApi(fpsDate);
+            return fps.file.ligneId === id && fpsDateString === formatDateForApi(selectedDate);
+          });
+          
+          setFpsRecords(relevantFps);
+        }
+      } catch (err) {
+        console.error('Error fetching line data:', err);
+        setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (id) {
+      fetchLigneData();
+    }
+  }, [id, selectedDate]);
+  
+  // Fonction pour afficher les détails d'une heure spécifique
+  const viewHourDetails = (hour: string) => {
+    setSelectedHour(hour);
+    
+    const hourData = kpiData.hourlyData.find((data: any) => data.hour === hour);
+    
+    if (hourData) {
+      setModalContent({
+        title: `Détails de production - ${hour}`,
+        data: hourData.files.map((file: any) => ({
+          id: file.id,
+          uploadedAt: new Date(file.uploadedAt).toLocaleString(),
+          produitsConformes: file.produitsConformes,
+          produitsNonConformes: file.produitsNonConformes,
+          bobinesIncompletes: file.bobinesIncompletes,
+          ftq: file.ftq.toFixed(1) + '%',
+        })),
+        isOpen: true,
+      });
+    }
+  };
+  
+  // Fonction pour afficher les FPS de la ligne
+  const viewFpsRecords = () => {
+    if (fpsRecords.length > 0) {
+      setModalContent({
+        title: 'Fiches FPS Détectées',
+        data: fpsRecords.map((fps: any) => ({
+          id: fps.id,
+          uploadedAt: new Date(fps.file.uploadedAt).toLocaleString(),
+          defaut: fps.defaut || 'Non spécifié',
+          operateur: fps.operateur,
+          actions: fps.actions,
+        })),
+        isOpen: true,
+      });
+    }
+  };
+  
+  // Fermer le modal
+  const closeModal = () => {
+    setModalContent(prev => ({...prev, isOpen: false}));
+  };
+  
+  // Naviguer vers la page FPS
+  const goToFpsPage = (fpsId: string) => {
+    router.push(`/niveau1?id=${fpsId}`);
+  };
+
+  return (
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Ligne de Production #{id}
+        </h1>
+        
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700">Date:</span>
+            <DatePicker
+              selected={selectedDate}
+              onChange={(date) => setSelectedDate(date as Date)}
+              dateFormat="dd/MM/yyyy"
+              className="px-3 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+          
+          <UploadButton 
+            ligneId={id as string} 
+            onUploadSuccess={() => {
+              // Refresh data after upload
+              const reFetchData = async () => {
+                setLoading(true);
+                try {
+                  const response = await fetch(`/api/kpi?ligneId=${id}&date=${formatDateForApi(selectedDate)}`);
+                  if (response.ok) {
+                    const data = await response.json();
+                    const hourlyData = groupDataByHour(data.files);
+                    setKpiData({...data, hourlyData});
+                    
+                    // Check for new FPS records
+                    const fpsResponse = await fetch(`/api/fps?level=1`);
+                    if (fpsResponse.ok) {
+                      const fpsData = await fpsResponse.json();
+                      const relevantFps = fpsData.filter((fps: any) => {
+                        const fpsDate = new Date(fps.file.uploadedAt);
+                        const fpsDateString = formatDateForApi(fpsDate);
+                        return fps.file.ligneId === id && fpsDateString === formatDateForApi(selectedDate);
+                      });
+                      setFpsRecords(relevantFps);
+                    }
+                  }
+                } catch (err) {
+                  console.error('Error refreshing data:', err);
+                } finally {
+                  setLoading(false);
+                }
+              };
+              reFetchData();
+            }}
+          />
+        </div>
+      </div>
+      
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2 text-lg text-gray-600">Chargement des données...</span>
+        </div>
+      ) : error ? (
+        <div className="flex justify-center items-center h-64 text-red-500">
+          <AlertCircle className="h-8 w-8 mr-2" />
+          <span>{error}</span>
+        </div>
+      ) : (
+        <>
+          {/* FPS Alert Section */}
+          {fpsRecords.length > 0 && (
+            <div className="bg-red-100 border-l-4 border-red-500 p-4 mb-6 rounded-r-md">
+              <div className="flex items-center">
+                <AlertTriangle className="h-6 w-6 text-red-500 mr-2" />
+                <div>
+                  <h3 className="font-bold text-red-700">Alertes FPS Détectées</h3>
+                  <p className="text-sm text-red-600">
+                    {fpsRecords.length} condition{fpsRecords.length > 1 ? 's' : ''} nécessitant un FPS {fpsRecords.length > 1 ? 'ont' : 'a'} été détectée{fpsRecords.length > 1 ? 's' : ''}.
+                  </p>
+                </div>
+                <button 
+                  onClick={viewFpsRecords}
+                  className="ml-auto bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                >
+                  Voir les détails
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-gray-500 text-sm font-medium">Produits Conformes</h3>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{kpiData.summary.produitsConformes}</p>
+              <div className="flex items-center text-green-600 mt-2">
+                <CheckCircle2 className="h-4 w-4 mr-1" />
+                <span className="text-xs">Cible: {kpiData.summary.productionCible}</span>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-gray-500 text-sm font-medium">Produits Non Conformes</h3>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{kpiData.summary.produitsNonConformes}</p>
+              <div className={`flex items-center mt-2 ${kpiData.summary.produitsNonConformes > 10 ? 'text-red-600' : 'text-green-600'}`}>
+                {kpiData.summary.produitsNonConformes > 10 ? (
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                )}
+                <span className="text-xs">
+                  {kpiData.summary.produitsNonConformes > 10 ? 'Seuil dépassé' : 'Dans les normes'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-gray-500 text-sm font-medium">Bobines Incomplètes</h3>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{kpiData.summary.bobinesIncompletes}</p>
+              <div className={`flex items-center mt-2 ${kpiData.summary.bobinesIncompletes > 5 ? 'text-orange-600' : 'text-green-600'}`}>
+                {kpiData.summary.bobinesIncompletes > 5 ? (
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                )}
+                <span className="text-xs">
+                  {kpiData.summary.bobinesIncompletes > 5 ? 'Attention requise' : 'Dans les normes'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-gray-500 text-sm font-medium">FTQ</h3>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{kpiData.summary.ftq.toFixed(1)}%</p>
+              <div className={`flex items-center mt-2 ${kpiData.summary.ftq < seuils.ftq ? 'text-red-600' : 'text-green-600'}`}>
+                {kpiData.summary.ftq < seuils.ftq ? (
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                )}
+                <span className="text-xs">
+                  {kpiData.summary.ftq < seuils.ftq ? `Sous le seuil (${seuils.ftq}%)` : `Au-dessus du seuil (${seuils.ftq}%)`}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Hourly Analysis */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold mb-4">Analyse Horaire</h2>
+            
+            {kpiData.hourlyData.length > 0 ? (
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Heure</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conformes</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Non Conformes</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bobines Incomplètes</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FTQ</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {kpiData.hourlyData.map((hourData: any, index: number) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 mr-2 text-blue-600" />
+                              {hourData.hour}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{hourData.produitsConformes}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span className={hourData.produitsNonConformes > 0 ? "text-red-600 font-medium" : ""}>
+                              {hourData.produitsNonConformes}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span className={hourData.bobinesIncompletes > 0 ? "text-orange-600 font-medium" : ""}>
+                              {hourData.bobinesIncompletes}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span className={hourData.ftq < seuils.ftq ? "text-red-600 font-medium" : ""}>
+                              {hourData.ftq.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <button
+                              onClick={() => viewHourDetails(hourData.hour)}
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Détails
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div className="mt-8">
+                  <h3 className="text-lg font-bold mb-4">Production Horaire</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart
+                      data={kpiData.hourlyData.map((item: any) => ({
+                        hour: item.hour,
+                        conformes: item.produitsConformes,
+                        nonConformes: item.produitsNonConformes,
+                        incomplets: item.bobinesIncompletes
+                      }))}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="conformes" name="Produits Conformes" stackId="a" fill="#4ade80" />
+                      <Bar dataKey="nonConformes" name="Produits Non Conformes" stackId="a" fill="#f87171" />
+                      <Bar dataKey="incomplets" name="Bobines Incomplètes" stackId="a" fill="#fbbf24" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="mt-8">
+                  <h3 className="text-lg font-bold mb-4">FTQ Horaire</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart
+                      data={kpiData.hourlyData.map((item: any) => ({
+                        hour: item.hour,
+                        ftq: item.ftq
+                      }))}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" />
+                      <YAxis domain={[Math.max(0, Math.floor(Math.min(...kpiData.hourlyData.map((item: any) => item.ftq)) - 10)), 100]} />
+                      <Tooltip formatter={(value) => `${parseFloat(value).toFixed(1)}%`} />
+                      <Line type="monotone" dataKey="ftq" name="FTQ" stroke="#3b82f6" strokeWidth={2} dot={{ r: 5 }} />
+                      {/* Ligne de seuil */}
+                      <Line 
+                        type="monotone" 
+                        dataKey={() => seuils.ftq} 
+                        stroke="#ef4444" 
+                        name="Seuil FTQ"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-10">
+                <p>Aucune donnée horaire disponible pour cette date.</p>
+                <p className="text-sm mt-2">Téléchargez un fichier pour voir l'analyse horaire.</p>
+              </div>
+            )}
+          </div>
+          
+          {/* Modal */}
+          {modalContent.isOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-auto">
+                <h2 className="text-2xl font-bold mb-4">{modalContent.title}</h2>
+                
+                {modalContent.data.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          {Object.keys(modalContent.data[0]).map((key) => (
+                            <th key={key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{key}</th>
+                          ))}
+                          {modalContent.title.includes('FPS') && (
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {modalContent.data.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            {Object.values(item).map((value: any, i) => (
+                              <td key={i} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{value}</td>
+                            ))}
+                            {modalContent.title.includes('FPS') && (
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <button 
+                                  onClick={() => goToFpsPage(item.id)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                                >
+                                  Voir FPS
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500">Aucune donnée disponible</p>
+                )}
+                
+                <div className="mt-6 flex justify-center">
+                  <button
+                    onClick={closeModal}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-200"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
