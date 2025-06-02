@@ -44,9 +44,12 @@ export interface BobineData {
   produit: string;
 }
 
-export async function processExcelFile(filePath: string) {
+export async function processExcelFile(filePathOrBuffer: string | Buffer) {
   try {
-    const workbook = read(filePath, { type: 'file' });
+    const workbook = typeof filePathOrBuffer === 'string' 
+      ? read(filePathOrBuffer, { type: 'file' }) 
+      : read(filePathOrBuffer, { type: 'buffer' });
+    
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const data = utils.sheet_to_json(worksheet);

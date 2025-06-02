@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import CalendarEventsAndAnnouncements from "../../components/CalendarEventsAndAnnouncements"; // ✅ NOUVEAU
 
 const AdminPage = () => {
@@ -85,23 +85,15 @@ const AdminPage = () => {
                 </div>
               </motion.div>
             ))}
-          </motion.div>
-        </div>
-
+          </motion.div>        </div>
+        
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
           className="w-full lg:w-1/3 flex flex-col gap-8"
         >
-          <motion.div
-            whileInView={{ opacity: 1, y: 0 }}
-            initial={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.5 }}
-            className="bg-white rounded-2xl shadow-md p-4"
-          >
-            <CalendarEventsAndAnnouncements />
-          </motion.div>
+          <CalendarEventsAndAnnouncements />
         </motion.div>
       </motion.div>
 
