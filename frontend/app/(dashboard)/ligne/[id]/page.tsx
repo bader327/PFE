@@ -15,9 +15,10 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import Announcements from "../../../components/Announcments";
-import EventCalendar from "../../../components/EventCalendar";
+import { processExcelFile } from "../../../../lib/excelParser";
 import HourlyAnalysis from "../../../components/HourlyAnalysis";
+import LineCalendar from "../../../components/LineCalendar";
+import SerialNumberModal from "../../../components/SerialNumberModal";
 
 // Définition des seuils pour les KPIs
 const seuils = {
@@ -81,6 +82,9 @@ export default function LignePage() {
   const [fpsRecords, setFpsRecords] = useState<any[]>([]);
   const [showFpsModal, setShowFpsModal] = useState(false);
   const [selectedHour, setSelectedHour] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalSerials, setModalSerials] = useState<number[]>([]);
 
   useEffect(() => {
     // Générer des valeurs aléatoires
@@ -105,18 +109,61 @@ export default function LignePage() {
   const handleFileUpload = async (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
-    const lines = text.trim().split("\n");
-    const extracted = lines.slice(1).map((line: string) => {
-      const [date, conformes, nonConformes, heures] = line.split(",");
-      return {
-        date,
-        conformes: Number(conformes),
-        nonConformes: Number(nonConformes),
-        heures: Number(heures),
-      };
-    });
-    setData(extracted);
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const result = await processExcelFile(buffer);
+
+      // Update KPI data with the processed results
+      setKpiData({
+        summary: {
+          produitsConformes: result.produitsConformes,
+          produitsNonConformes: result.produitsNonConformes,
+          bobinesIncompletes: result.bobinesIncompletes,
+          ftq: result.ftq,
+          tauxProduction: result.productionRate,
+          tauxRejets: result.rejectRate,
+          productionCible: result.targetProduction
+        },
+        files: [{
+          id: Date.now(),
+          uploadedAt: new Date().toISOString(),
+          produitsNonConformes: result.produitsNonConformes,
+          bobinesIncompletes: result.bobinesIncompletes,
+          serialsNOK: result.serialsNOK,
+          serialsIncomplets: result.serialsIncomplets
+        }],
+        hourlyData: result.hourlyData
+      });
+
+      // Update KPIs state
+      setKpis({
+        productionRate: result.productionRate,
+        rejectRate: result.rejectRate,
+        conformityRate: result.conformityRate,
+        targetProduction: result.targetProduction
+      });
+
+      // Update random data for charts
+      setRandomData({
+        conformes: result.produitsConformes,
+        nonConformes: result.produitsNonConformes,
+        heures: Object.keys(result.hourlyData).length
+      });
+
+      // Check for FPS alerts from the parser
+      if (result.alertes && result.alertes.length > 0) {
+        const randomFpsNumber = Math.floor(Math.random() * 9000) + 1000;
+        setFpsAlert(randomFpsNumber);
+        setTimeout(() => {
+          router.push("/niveauligne");
+        }, 2000);
+      }
+
+    } catch (error) {
+      console.error('Error processing file:', error);
+      setError('Erreur lors du traitement du fichier. Vérifiez le format.');
+    }
   };
 
   const checkAlert = (value: number, threshold: number) => value < threshold;
@@ -136,11 +183,11 @@ export default function LignePage() {
             <label className="relative cursor-pointer">
               <div className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow">
                 <Image src="/upload.png" alt="Upload" width={20} height={20} />
-                <span>Importer un CSV</span>
+                <span>Importer un fichier</span>
               </div>
               <input
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx,.xls"
                 onChange={handleFileUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
@@ -173,59 +220,156 @@ export default function LignePage() {
           {/* Sélecteur de date */}
           <select className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full">
             <option value="date-1">
-              {new Date().toLocaleDateString("fr-FR", {
+              {selectedDate.toLocaleDateString("fr-FR", {
                 year: "numeric",
                 month: "long",
                 day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false,
               })}
             </option>
           </select>
 
-          {/* Cartes simples */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card
-              title="Produits conformes"
-              value={randomData.conformes}
-              color="green"
-            />
-            <Card
-              title="Produits non conformes"
-              value={randomData.nonConformes}
-              color="red"
-            />
-            <Card
-              title="Heures de travail"
-              value={randomData.heures}
-              color="blue"
-            />
-          </div>
+          {/* Cartes KPI principales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Carte Produits Conformes */}
+            <div className="p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] bg-white border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Produits Conformes
+              </h3>
+              <p className="text-4xl font-extrabold text-gray-900">{randomData.conformes}</p>
+              <p className="mt-3 text-sm font-semibold text-green-600">
+                ✅ Produits validés par le contrôle qualité
+              </p>
+            </div>
+            
+            {/* Carte Produits Non Conformes */}
+            <div 
+              onClick={() => {
+                if (kpiData.files[0]?.serialsNOK?.length > 0) {
+                  setModalTitle("Numéros de série - Produits Non Conformes");
+                  setModalSerials(kpiData.files[0].serialsNOK);
+                  setModalOpen(true);
+                }
+              }}
+              className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] cursor-pointer ${
+              randomData.nonConformes > 0
+                ? "bg-red-100 border-red-400"
+                : "bg-white border-gray-200"
+            }`}>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Produits Non Conformes
+              </h3>
+              <p className="text-4xl font-extrabold text-gray-900">{randomData.nonConformes}</p>
+              <p className={`mt-3 text-sm font-semibold ${
+                randomData.nonConformes > 0 ? "text-red-600" : "text-green-600"
+              }`}>
+                {randomData.nonConformes > 0
+                  ? `⚠ ${randomData.nonConformes} produit(s) avec défauts`
+                  : `✅ Aucun produit non conforme`}
+              </p>
+            </div>
+            
+            {/* Carte Bobines Incomplètes */}
+            <div 
+              onClick={() => {
+                if (kpiData.files[0]?.serialsIncomplets?.length > 0) {
+                  setModalTitle("Numéros de série - Bobines Incomplètes");
+                  setModalSerials(kpiData.files[0].serialsIncomplets);
+                  setModalOpen(true);
+                }
+              }}
+              className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] cursor-pointer ${
+              (kpiData.summary.bobinesIncompletes || 0) > 0
+                ? "bg-orange-100 border-orange-400"
+                : "bg-white border-gray-200"
+            }`}>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Bobines Incomplètes
+              </h3>
+              <p className="text-4xl font-extrabold text-gray-900">{kpiData.summary.bobinesIncompletes || 0}</p>
+              <p className={`mt-3 text-sm font-semibold ${
+                (kpiData.summary.bobinesIncompletes || 0) > 0 ? "text-orange-600" : "text-green-600"
+              }`}>
+                {(kpiData.summary.bobinesIncompletes || 0) > 0
+                  ? `⚠ ${kpiData.summary.bobinesIncompletes} bobine(s) incomplète(s)`
+                  : `✅ Aucune bobine incomplète`}
+              </p>
+            </div>
+            
+            {/* Carte FTQ */}
+            <div className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] ${
+              kpis.conformityRate < seuils.ftq
+                ? "bg-red-100 border-red-400"
+                : "bg-white border-gray-200"
+            }`}>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                FTQ (First Time Quality)
+              </h3>
+              <p className="text-4xl font-extrabold text-gray-900">{kpis.conformityRate.toFixed(1)}%</p>
+              <p className={`mt-3 text-sm font-semibold ${
+                kpis.conformityRate < seuils.ftq ? "text-red-600" : "text-green-600"
+              }`}>
+                {kpis.conformityRate < seuils.ftq
+                  ? `⚠ FTQ en dessous du seuil (${seuils.ftq}%)`
+                  : `✅ FTQ dans la norme (>${seuils.ftq}%)`}
+              </p>
+            </div>
 
-          {/* Cartes KPI */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <KpiCard
-              title="Taux de production"
-              value={kpis.productionRate}
-              alert={checkAlert(kpis.productionRate, 50)}
-            />
-            <KpiCard
-              title="Taux de rejet"
-              value={kpis.rejectRate}
-              alert={checkAlert(kpis.rejectRate, 30)}
-            />
-            <KpiCard
-              title="Taux de conformité"
-              value={kpis.conformityRate}
-              alert={checkAlert(kpis.conformityRate, 70)}
-            />
-            <KpiCard
-              title="Production cible"
-              value={kpis.targetProduction}
-              alert={checkAlert(kpis.targetProduction, 40)}
-            />
+            {/* Carte Taux de Rejets */}
+            <div className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] ${
+              kpis.rejectRate > seuils.tauxRejets
+                ? "bg-red-100 border-red-400"
+                : "bg-white border-gray-200"
+            }`}>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Taux de Rejets
+              </h3>
+              <p className="text-4xl font-extrabold text-gray-900">{kpis.rejectRate.toFixed(1)}%</p>
+              <p className={`mt-3 text-sm font-semibold ${
+                kpis.rejectRate > seuils.tauxRejets ? "text-red-600" : "text-green-600"
+              }`}>
+                {kpis.rejectRate > seuils.tauxRejets
+                  ? `⚠ Taux de rejets trop élevé (>${seuils.tauxRejets}%)`
+                  : `✅ Taux de rejets acceptable (<${seuils.tauxRejets}%)`}
+              </p>
+            </div>
+
+            {/* Carte Production Cible */}
+            <div className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] ${
+              kpis.targetProduction < seuils.productionCible
+                ? "bg-yellow-100 border-yellow-400"
+                : "bg-white border-gray-200"
+            }`}>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Production Cible
+              </h3>
+              <p className="text-4xl font-extrabold text-gray-900">{kpis.targetProduction.toFixed(1)}%</p>
+              <p className={`mt-3 text-sm font-semibold ${
+                kpis.targetProduction < seuils.productionCible ? "text-yellow-600" : "text-green-600"
+              }`}>
+                {kpis.targetProduction < seuils.productionCible
+                  ? `⚠ En dessous de l'objectif (${seuils.productionCible}%)`
+                  : `✅ Objectif atteint (${seuils.productionCible}%)`}
+              </p>
+            </div>
+
+            {/* Carte Taux de Production */}
+            <div className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] ${
+              kpis.productionRate < seuils.tauxProduction
+                ? "bg-orange-100 border-orange-400"
+                : "bg-white border-gray-200"
+            }`}>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Taux de Production
+              </h3>
+              <p className="text-4xl font-extrabold text-gray-900">{kpis.productionRate.toFixed(1)}%</p>
+              <p className={`mt-3 text-sm font-semibold ${
+                kpis.productionRate < seuils.tauxProduction ? "text-orange-600" : "text-green-600"
+              }`}>
+                {kpis.productionRate < seuils.tauxProduction
+                  ? `⚠ Taux de production faible (<${seuils.tauxProduction}%)`
+                  : `✅ Taux de production optimal (>${seuils.tauxProduction}%)`}
+              </p>
+            </div>
           </div>
 
           {/* Graphiques CSV */}
@@ -316,14 +460,22 @@ export default function LignePage() {
               />
             </div>
           </div>
-        </div>
-
-        {/* RIGHT SIDE */}
-        <div className="lg:w-1/3 space-y-8">
-          <EventCalendar setSelectedDate={setCalendarDate} />
-          <Announcements />
+        </div>        {/* RIGHT SIDE */}
+        <div className="lg:w-1/3 space-y-8">          <LineCalendar 
+            ligneId={id as string}
+            setSelectedDate={setCalendarDate} 
+            className="shadow-xl" 
+          />
         </div>
       </div>
+
+      {/* Modal pour afficher les numéros de série */}
+      <SerialNumberModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={modalTitle}
+        serialNumbers={modalSerials}
+      />
     </div>
   );
 }

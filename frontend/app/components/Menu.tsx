@@ -9,11 +9,16 @@ const reclamationsCount = 3;
 const menuItems = [
   {
     title: "MENU",
-    items: [
-      {
+    items: [      {
         icon: "/home.png",
         label: "Home",
         href: "/",
+        visible: ["admin"],
+      },
+      {
+        icon: "/calendar.png",
+        label: "Calendar",
+        href: "/calendar",
         visible: ["admin"],
       },
       {

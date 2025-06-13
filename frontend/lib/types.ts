@@ -1,16 +1,12 @@
 export interface BobineData {
-  id: string;
-  statut: 'Production' | 'Setup' | 'After Setup';
-  defauts: {
-    defaut1?: boolean;
-    defaut2?: boolean;
-    defaut3?: boolean;
-    defaut4?: boolean;
-    defaut5?: boolean;
-  };
-  hasDefect: boolean;
-  numeroBobine: string;
+  numero: string;
   produit: string;
+  conforme: boolean;
+  nonConforme: boolean;
+  incomplete: boolean;
+  reportType: string;
+  defauts: string[];
+  hasDefect: boolean;
   
   // Computed metrics
   defects?: number;

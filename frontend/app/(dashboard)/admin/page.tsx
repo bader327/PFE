@@ -91,7 +91,7 @@ const AdminPage = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="w-full lg:w-1/3 flex flex-col gap-8"
+          className="w-full lg:w-1/2 flex flex-col gap-8"
         >
           <CalendarEventsAndAnnouncements />
         </motion.div>

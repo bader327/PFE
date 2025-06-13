@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
 import Image from "next/image";
+import { useState } from "react";
+import CompactCalendar from "./CompactCalendar";
 
 const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
   return (
     <nav className="bg-white px-4 py-3 shadow-sm rounded-xl flex items-center justify-between relative">
       {/* Titre Dashboard */}
@@ -24,6 +24,11 @@ const Navbar = () => {
           placeholder="Rechercher..."
           className="ml-2 bg-transparent outline-none text-sm w-full text-gray-700"
         />
+      </div>
+      
+      {/* Calendar Events Notifications */}
+      <div className="hidden md:block">
+        <CompactCalendar />
       </div>
 
       {/* Utilisateur avec dropdown */}

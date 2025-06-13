@@ -5,17 +5,17 @@ import { useEffect, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 import UploadButton from "../../components/UploadButton";
 
@@ -139,7 +139,14 @@ export default function Page() {
       // Simuler l'extraction des IDs (à adapter selon la structure réelle des données)
       return Array.from({ length: file.produitsNonConformes }, (_, i) => ({
         id: `NC-${file.id}-${i+1}`,
-        uploadedAt: new Date(file.uploadedAt).toLocaleString()
+        uploadedAt: new Date(file.uploadedAt).toLocaleString('fr-FR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
       }));
     });
     
@@ -157,7 +164,14 @@ export default function Page() {
       // Simuler l'extraction des IDs (à adapter selon la structure réelle des données)
       return Array.from({ length: file.bobinesIncompletes }, (_, i) => ({
         id: `BI-${file.id}-${i+1}`,
-        uploadedAt: new Date(file.uploadedAt).toLocaleString()
+        uploadedAt: new Date(file.uploadedAt).toLocaleString('fr-FR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
       }));
     });
     
@@ -322,132 +336,394 @@ export default function Page() {
                 : `✅ FTQ dans la norme (>${seuils.ftq}%)`}
             </p>
           </div>
+
+          {/* Carte Taux de Rejets */}
+          <div
+            className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] ${
+              (kpiData.summary.tauxRejets || 0) > seuils.tauxRejets
+                ? "bg-red-100 border-red-400"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              Taux de Rejets
+            </h3>
+            <p className="text-4xl font-extrabold text-gray-900">{(kpiData.summary.tauxRejets || 0).toFixed(1)}%</p>
+            <p
+              className={`mt-3 text-sm font-semibold ${
+                (kpiData.summary.tauxRejets || 0) > seuils.tauxRejets ? "text-red-600" : "text-green-600"
+              }`}
+            >
+              {(kpiData.summary.tauxRejets || 0) > seuils.tauxRejets
+                ? `⚠ Taux de rejets trop élevé (>${seuils.tauxRejets}%)`
+                : `✅ Taux de rejets acceptable (<${seuils.tauxRejets}%)`}
+            </p>
+          </div>
+
+          {/* Carte Production Cible */}
+          <div
+            className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] ${
+              (kpiData.summary.productionCible || 0) < seuils.productionCible
+                ? "bg-yellow-100 border-yellow-400"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              Production Cible
+            </h3>
+            <p className="text-4xl font-extrabold text-gray-900">{(kpiData.summary.productionCible || 0).toFixed(1)}%</p>
+            <p
+              className={`mt-3 text-sm font-semibold ${
+                (kpiData.summary.productionCible || 0) < seuils.productionCible ? "text-yellow-600" : "text-green-600"
+              }`}
+            >
+              {(kpiData.summary.productionCible || 0) < seuils.productionCible
+                ? `⚠ En dessous de l'objectif (${seuils.productionCible}%)`
+                : `✅ Objectif atteint (${seuils.productionCible}%)`}
+            </p>
+          </div>
+
+          {/* Carte Taux de Production */}
+          <div
+            className={`p-5 rounded-3xl shadow-lg border transition duration-300 ease-in-out transform hover:scale-[1.03] ${
+              (kpiData.summary.tauxProduction || 0) < seuils.tauxProduction
+                ? "bg-orange-100 border-orange-400"
+                : "bg-white border-gray-200"
+            }`}
+          >
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              Taux de Production
+            </h3>
+            <p className="text-4xl font-extrabold text-gray-900">{(kpiData.summary.tauxProduction || 0).toFixed(1)}%</p>
+            <p
+              className={`mt-3 text-sm font-semibold ${
+                (kpiData.summary.tauxProduction || 0) < seuils.tauxProduction ? "text-orange-600" : "text-green-600"
+              }`}
+            >
+              {(kpiData.summary.tauxProduction || 0) < seuils.tauxProduction
+                ? `⚠ Taux de production faible (<${seuils.tauxProduction}%)`
+                : `✅ Taux de production optimal (>${seuils.tauxProduction}%)`}
+            </p>
+          </div>
         </motion.div>
-      )}      {!loading && !error && (
+      )}
+      {!loading && !error && (
         <>
+          <div className="space-y-8">
+          {/* Section Title */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-            className="bg-white rounded-2xl shadow-lg p-6 h-[400px] border border-gray-200"
+            transition={{ delay: 0.1, duration: 0.6 }}
+            className="text-center"
           >
-            <h3 className="text-xl font-bold mb-4 text-center text-indigo-700">
-              Production Conforme vs Non Conforme
-            </h3>
-            <ResponsiveContainer width="100%" height="90%">
-              <BarChart 
-                data={kpiData.chartData.map((item: any) => ({
-                  name: new Date(item.date).toLocaleDateString('fr-FR', { weekday: 'short' }),
-                  conforme: item.produitsConformes,
-                  nonConforme: item.produitsNonConformes + item.bobinesIncompletes
-                }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                <XAxis dataKey="name" stroke="#4c51bf" />
-                <YAxis stroke="#4c51bf" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#f9fafb", borderRadius: 8 }}
-                  cursor={{ fill: "rgba(99,102,241,0.1)" }}                  formatter={(value: any, name: any) => {
-                    return [`${value}`, name === 'conforme' ? 'Produits Conformes' : 'Produits Non Conformes'];
-                  }}
-                />
-                <Bar dataKey="conforme" name="Produits Conformes" fill="#4ade80" />
-                <Bar dataKey="nonConforme" name="Produits Non Conformes" fill="#f87171" />
-              </BarChart>
-            </ResponsiveContainer>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Analyse des Performances</h2>
+            <p className="text-gray-600">Visualisation détaillée des indicateurs de production</p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            className="bg-white rounded-2xl shadow-lg p-6 h-[400px] border border-gray-200"
-          >
-            <h3 className="text-xl font-bold mb-4 text-center text-indigo-700">
-              Taux de Production et Rejets
-            </h3>
-            <ResponsiveContainer width="100%" height="90%">
-              <AreaChart 
-                data={kpiData.chartData.map((item: any) => ({
-                  name: new Date(item.date).toLocaleDateString('fr-FR', { weekday: 'short' }),
-                  tauxProduction: item.tauxProduction,
-                  tauxRejets: item.tauxRejets
-                }))}
-              >
-                <defs>
-                  <linearGradient id="colorProduction" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4ade80" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#4ade80" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorRejets" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f87171" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#f87171" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="name" stroke="#4c51bf" />
-                <YAxis stroke="#4c51bf" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#f9fafb", borderRadius: 8 }}
-                  formatter={(value: any, name: any) => {
-                    return [`${parseFloat(value).toFixed(1)}%`, 
-                      name === 'tauxProduction' ? 'Taux de Production' : 'Taux de Rejets'];
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="tauxProduction"
-                  name="Taux de Production"
-                  stroke="#4ade80"
-                  fillOpacity={1}
-                  fill="url(#colorProduction)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="tauxRejets"
-                  name="Taux de Rejets"
-                  stroke="#f87171"
-                  fillOpacity={0.5}
-                  fill="url(#colorRejets)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </motion.div>
+          {/* Charts Grid - 2x2 Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+            {/* Chart 1: Production Volume - Stacked Bar Chart */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-shadow duration-300"
+            >
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-indigo-700 mb-2">
+                  Volume de Production Quotidien
+                </h3>
+                <p className="text-sm text-gray-500">Répartition des produits sur 7 jours</p>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={kpiData.chartData.map((item: any) => ({
+                      jour: new Date(item.date).toLocaleDateString('fr-FR', { 
+                        weekday: 'short', 
+                        day: '2-digit', 
+                        month: '2-digit' 
+                      }),
+                      conformes: item.produitsConformes,
+                      nonConformes: item.produitsNonConformes,
+                      bobinesIncompletes: item.bobinesIncompletes,
+                      total: item.produitsConformes + item.produitsNonConformes + item.bobinesIncompletes
+                    }))}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="jour" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{ 
+                        backgroundColor: "#ffffff", 
+                        borderRadius: 12,
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 10px 25px rgba(0,0,0,0.1)"
+                      }}
+                      formatter={(value: any, name: any) => {
+                        const labels: any = {
+                          conformes: 'Produits Conformes',
+                          nonConformes: 'Produits Non Conformes',
+                          bobinesIncompletes: 'Bobines Incomplètes'
+                        };
+                        return [`${value} unités`, labels[name] || name];
+                      }}
+                    />
+                    <Bar dataKey="conformes" stackId="a" name="conformes" fill="#10b981" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="nonConformes" stackId="a" name="nonConformes" fill="#ef4444" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="bobinesIncompletes" stackId="a" name="bobinesIncompletes" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="bg-white rounded-2xl shadow-lg p-6 h-[400px] border border-gray-200"
-          >
-            <h3 className="text-xl font-bold mb-4 text-center text-indigo-700">
-              FTQ (First Time Quality)
-            </h3>
-            <ResponsiveContainer width="100%" height="90%">
-              <LineChart 
-                data={kpiData.chartData.map((item: any) => ({
-                  jour: new Date(item.date).toLocaleDateString('fr-FR', { weekday: 'short' }),
-                  ftq: item.ftq
-                }))}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-                <XAxis dataKey="jour" stroke="#4c51bf" />
-                <YAxis stroke="#4c51bf" domain={['dataMin - 5', 'dataMax + 5']} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#f9fafb", borderRadius: 8 }}
-                  cursor={{ stroke: "#4c51bf", strokeWidth: 2 }}
-                  formatter={(value: any) => [`${parseFloat(String(value)).toFixed(1)}%`, 'FTQ']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="ftq"
-                  stroke="#6366f1"
-                  strokeWidth={3}
-                  dot={{ r: 5, fill: "#6366f1" }}
-                  activeDot={{ r: 7 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </motion.div>
+            {/* Chart 2: KPI Performance Dashboard - Multi-line Chart */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-shadow duration-300"
+            >
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-indigo-700 mb-2">
+                  Évolution des KPI de Performance
+                </h3>
+                <p className="text-sm text-gray-500">Tendances des indicateurs clés (%)</p>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart 
+                    data={kpiData.chartData.map((item: any) => ({
+                      jour: new Date(item.date).toLocaleDateString('fr-FR', { 
+                        weekday: 'short', 
+                        day: '2-digit' 
+                      }),
+                      ftq: item.ftq,
+                      tauxProduction: item.tauxProduction,
+                      productionCible: item.productionCible
+                    }))}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="jour" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ 
+                        backgroundColor: "#ffffff", 
+                        borderRadius: 12,
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 10px 25px rgba(0,0,0,0.1)"
+                      }}
+                      formatter={(value: any, name: any) => {
+                        const labels: any = {
+                          ftq: 'FTQ',
+                          tauxProduction: 'Taux de Production',
+                          productionCible: 'Production Cible'
+                        };
+                        return [`${parseFloat(value).toFixed(1)}%`, labels[name]];
+                      }}
+                    />
+                    {/* Ligne de seuil FTQ */}
+                    <Line 
+                      type="monotone" 
+                      dataKey={() => seuils.ftq} 
+                      stroke="#94a3b8" 
+                      strokeDasharray="5 5" 
+                      strokeWidth={1}
+                      dot={false}
+                      name="Seuil FTQ"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="ftq"
+                      stroke="#6366f1"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#6366f1" }}
+                      activeDot={{ r: 6, fill: "#6366f1", stroke: "#ffffff", strokeWidth: 2 }}
+                      name="ftq"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="tauxProduction"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#10b981" }}
+                      activeDot={{ r: 6, fill: "#10b981", stroke: "#ffffff", strokeWidth: 2 }}
+                      name="tauxProduction"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="productionCible"
+                      stroke="#f59e0b"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#f59e0b" }}
+                      activeDot={{ r: 6, fill: "#f59e0b", stroke: "#ffffff", strokeWidth: 2 }}
+                      name="productionCible"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+
+            {/* Chart 3: Quality Analysis - Area Chart with Rejection Rate */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-shadow duration-300"
+            >
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-indigo-700 mb-2">
+                  Analyse Qualité
+                </h3>
+                <p className="text-sm text-gray-500">Taux de rejets vs seuil critique</p>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart 
+                    data={kpiData.chartData.map((item: any) => ({
+                      jour: new Date(item.date).toLocaleDateString('fr-FR', { 
+                        weekday: 'short', 
+                        day: '2-digit' 
+                      }),
+                      tauxRejets: item.tauxRejets,
+                      seuilCritique: seuils.tauxRejets,
+                      conformite: 100 - item.tauxRejets
+                    }))}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorRejets" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1} />
+                      </linearGradient>
+                      <linearGradient id="colorConformite" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="jour" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ 
+                        backgroundColor: "#ffffff", 
+                        borderRadius: 12,
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 10px 25px rgba(0,0,0,0.1)"
+                      }}
+                      formatter={(value: any, name: any) => {
+                        const labels: any = {
+                          tauxRejets: 'Taux de Rejets',
+                          conformite: 'Taux de Conformité',
+                          seuilCritique: 'Seuil Critique'
+                        };
+                        return [`${parseFloat(value).toFixed(1)}%`, labels[name]];
+                      }}
+                    />
+                    {/* Zone de conformité */}
+                    <Area
+                      type="monotone"
+                      dataKey="conformite"
+                      stackId="1"
+                      stroke="#10b981"
+                      fill="url(#colorConformite)"
+                      name="conformite"
+                    />
+                    {/* Zone de rejets */}
+                    <Area
+                      type="monotone"
+                      dataKey="tauxRejets"
+                      stroke="#ef4444"
+                      fill="url(#colorRejets)"
+                      name="tauxRejets"
+                    />
+                    {/* Ligne de seuil critique */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="seuilCritique" 
+                      stroke="#dc2626" 
+                      strokeDasharray="8 4" 
+                      strokeWidth={2}
+                      dot={false}
+                      name="seuilCritique"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+
+            {/* Chart 4: Production Efficiency Gauge-style Bar Chart */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-shadow duration-300"
+            >
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-indigo-700 mb-2">
+                  Efficacité de Production
+                </h3>
+                <p className="text-sm text-gray-500">Performance quotidienne vs objectif</p>
+              </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={kpiData.chartData.map((item: any) => {
+                      const efficacite = (item.produitsConformes / (item.produitsConformes + item.produitsNonConformes + item.bobinesIncompletes)) * 100;
+                      return {
+                        jour: new Date(item.date).toLocaleDateString('fr-FR', { 
+                          weekday: 'short', 
+                          day: '2-digit' 
+                        }),
+                        efficacite: efficacite,
+                        objectif: 95, // Objectif d'efficacité
+                        ecart: efficacite - 95
+                      };
+                    })}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="jour" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ 
+                        backgroundColor: "#ffffff", 
+                        borderRadius: 12,
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 10px 25px rgba(0,0,0,0.1)"
+                      }}
+                      formatter={(value: any, name: any) => {
+                        const labels: any = {
+                          efficacite: 'Efficacité Réelle',
+                          objectif: 'Objectif',
+                          ecart: 'Écart vs Objectif'
+                        };
+                        return [`${parseFloat(value).toFixed(1)}%`, labels[name]];
+                      }}
+                    />
+                    {/* Barre d'objectif (référence) */}
+                    <Bar 
+                      dataKey="objectif" 
+                      fill="#e2e8f0" 
+                      name="objectif"
+                      radius={[4, 4, 4, 4]}
+                    />
+                    {/* Barre d'efficacité réelle */}
+                    <Bar 
+                      dataKey="efficacite" 
+                      fill="#3b82f6" 
+                      name="efficacite"
+                      radius={[4, 4, 4, 4]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          </div>
+        </div>
           
           {/* Modal pour afficher les détails des produits */}
           {modalContent.isOpen && (

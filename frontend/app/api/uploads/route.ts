@@ -79,8 +79,7 @@ export async function POST(req: Request) {
     const filename = `${Date.now()}-${file.name}`;
     const filepath = path.join(uploadDir, filename);
     await writeFile(filepath, fileBuffer);
-    
-    try {
+      try {
       // Process Excel file from buffer
       const { 
         produitsConformes, 
@@ -91,9 +90,10 @@ export async function POST(req: Request) {
         rejectRate: tauxRejets,
         targetProduction: productionCible,
         bobinesData,
-        extendedInfo: { hourlyData }
-      } = await processExcelFile(fileBuffer);
-
+        hourlyData,
+        serialsNOK,
+        serialsIncomplets
+      } = await processExcelFile(fileBuffer.buffer);
       // Connect to MongoDB
       db = await connectToDatabase();
 
@@ -109,7 +109,9 @@ export async function POST(req: Request) {
         tauxProduction,
         tauxRejets,
         productionCible,
-        uploadedAt: new Date()
+        uploadedAt: new Date(),
+        serialsNOK,
+        serialsIncomplets
       });
 
       const fileId = fileDoc.insertedId;
@@ -132,17 +134,31 @@ export async function POST(req: Request) {
 
       // Format and check bobines
       const formattedBobines = bobinesData.map(b => ({
-        ...b,
-        defects: Object.values(b.defauts).filter(Boolean).length,
-        qualityScore: b.hasDefect ? 0.7 : 1.0,
+        numero: b.numero.toString(),
+        produit: b.produit,
+        conforme: b.conforme,
+        nonConforme: b.nonConforme,
+        incomplete: b.incomplete,
+        reportType: b.reportType,
+        defauts: b.defauts,
+        hasDefect: b.nonConforme,
+        defects: b.defauts.filter(Boolean).length,
+        qualityScore: b.nonConforme ? 0.7 : 1.0,
         incompleteness: 0,
         productType: b.produit,
-        defectType: b.hasDefect ? 
-          Object.keys(b.defauts).find(key => b.defauts[key as keyof typeof b.defauts]) : 
+        defectType: b.nonConforme ? 
+          b.defauts.find(defaut => defaut) : 
           undefined
       }));
+      const hourlyMetricsArray = hourlyData ? 
+        Object.entries(hourlyData).map(([hour, data]) => ({
+          hour: parseInt(hour),
+          produitsConformes: data.produitsConformes,
+          produitsNonConformes: data.produitsNonConformes,
+          total: data.total
+        })) : [];
 
-      const fpsConditionsMet = checkFpsConditions(formattedBobines);
+      const fpsConditionsMet = checkFpsConditions(formattedBobines, hourlyMetricsArray);
       let fpsId;
       
       if (fpsConditionsMet) {
