@@ -18,7 +18,7 @@ type Announcement = {
   id: string;
   title: string;
   content: string;
-  createdAt: string;
+  date: string;
   type: string;
   ligneId?: string;
 };
@@ -35,7 +35,6 @@ export default function CompactCalendar() {
 
   const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
 
-  // Fetch events and announcements
   const fetchData = async () => {
     try {
       const [eventsResponse, announcementsResponse] = await Promise.all([
@@ -54,14 +53,14 @@ export default function CompactCalendar() {
 
       setEvents(eventsData);
       setAnnouncements(announcementsData);
-      
-      // Count events for the selected day
+
       const todayEvents = eventsData.filter(
         (event: Event) => event.date === format(new Date(), "yyyy-MM-dd")
       );
       setEventCount(todayEvents.length);
-      
+
       setError(null);
+      console.log(announcementsData);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Failed to load data");
@@ -78,23 +77,26 @@ export default function CompactCalendar() {
 
   return (
     <div className="relative">
-      {/* Header with notification badges */}
       <div className="flex space-x-2 bg-white rounded-lg shadow-sm p-1">
-        <button 
+        <button
           onClick={() => setIsCalendarOpen(!isCalendarOpen)}
           className={`p-2 rounded-lg transition flex items-center gap-2 ${
-            isCalendarOpen ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+            isCalendarOpen
+              ? "bg-blue-50 text-blue-600"
+              : "text-gray-700 hover:bg-gray-50"
           }`}
           aria-label="Calendar"
         >
           <CalendarDays size={20} />
           <span className="text-sm font-medium hidden md:inline">Calendar</span>
         </button>
-        
-        <button 
+
+        <button
           onClick={() => setIsEventsOpen(!isEventsOpen)}
           className={`p-2 rounded-lg transition flex items-center gap-2 ${
-            isEventsOpen ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+            isEventsOpen
+              ? "bg-blue-50 text-blue-600"
+              : "text-gray-700 hover:bg-gray-50"
           }`}
           aria-label="Events"
         >
@@ -106,16 +108,20 @@ export default function CompactCalendar() {
             </span>
           )}
         </button>
-        
-        <button 
+
+        <button
           onClick={() => setIsAnnouncementsOpen(!isAnnouncementsOpen)}
           className={`p-2 rounded-lg transition flex items-center gap-2 ${
-            isAnnouncementsOpen ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
+            isAnnouncementsOpen
+              ? "bg-blue-50 text-blue-600"
+              : "text-gray-700 hover:bg-gray-50"
           }`}
           aria-label="Announcements"
         >
           <Bell size={20} />
-          <span className="text-sm font-medium hidden md:inline">Announcements</span>
+          <span className="text-sm font-medium hidden md:inline">
+            Announcements
+          </span>
           {announcements.length > 0 && (
             <span className="bg-blue-100 text-blue-600 text-xs font-medium px-2 py-0.5 rounded-full">
               {announcements.length}
@@ -124,13 +130,12 @@ export default function CompactCalendar() {
         </button>
       </div>
 
-      {/* Calendar Popup */}
       {isCalendarOpen && (
         <div className="absolute top-full right-0 mt-2 z-50">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-[350px] p-4 animate-fade-in">
             <div className="flex justify-between items-center mb-3">
               <h3 className="font-semibold text-gray-800">Calendar</h3>
-              <button 
+              <button
                 onClick={() => setIsCalendarOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -156,7 +161,6 @@ export default function CompactCalendar() {
         </div>
       )}
 
-      {/* Events Popup */}
       {isEventsOpen && (
         <div className="absolute top-full right-0 mt-2 z-50">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-[350px] max-h-[500px] overflow-y-auto animate-fade-in">
@@ -165,7 +169,7 @@ export default function CompactCalendar() {
                 <h3 className="font-semibold text-gray-800">
                   Events for {format(selectedDate, "MMM d, yyyy")}
                 </h3>
-                <button 
+                <button
                   onClick={() => setIsEventsOpen(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -173,7 +177,7 @@ export default function CompactCalendar() {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-4">
               {filteredEvents.length === 0 ? (
                 <div className="text-center py-8">
@@ -187,15 +191,19 @@ export default function CompactCalendar() {
                       key={event.id}
                       className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-3"
                     >
-                      <h4 className="font-medium text-blue-900">{event.title}</h4>
-                      <p className="text-sm text-blue-700 mt-1">{event.description}</p>
+                      <h4 className="font-medium text-blue-900">
+                        {event.title}
+                      </h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        {event.description}
+                      </p>
                     </div>
                   ))}
                 </div>
               )}
-                <div className="mt-4 text-center">
-                <a 
-                  href="/calendar" 
+              <div className="mt-4 text-center">
+                <a
+                  href="/calendar"
                   className="inline-flex items-center text-blue-600 hover:text-blue-800"
                 >
                   <Plus size={16} className="mr-1" />
@@ -207,16 +215,13 @@ export default function CompactCalendar() {
         </div>
       )}
 
-      {/* Announcements Popup */}
       {isAnnouncementsOpen && (
         <div className="absolute top-full right-0 mt-2 z-50">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-[350px] max-h-[500px] overflow-y-auto animate-fade-in">
             <div className="sticky top-0 bg-white p-4 border-b border-gray-100">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold text-gray-800">
-                  Announcements
-                </h3>
-                <button 
+                <h3 className="font-semibold text-gray-800">Announcements</h3>
+                <button
                   onClick={() => setIsAnnouncementsOpen(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -224,7 +229,7 @@ export default function CompactCalendar() {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-4">
               {announcements.length === 0 ? (
                 <div className="text-center py-8">
@@ -237,25 +242,29 @@ export default function CompactCalendar() {
                     <div
                       key={announcement.id}
                       className={`rounded-lg p-3 ${
-                        announcement.type === 'warning' 
-                          ? 'bg-yellow-50' 
-                          : announcement.type === 'alert' 
-                          ? 'bg-red-50' 
-                          : 'bg-green-50'
+                        announcement.type === "warning"
+                          ? "bg-yellow-50"
+                          : announcement.type === "alert"
+                          ? "bg-red-50"
+                          : "bg-green-50"
                       }`}
                     >
-                      <h4 className="font-medium text-gray-900">{announcement.title}</h4>
-                      <p className="text-sm text-gray-700 mt-1">{announcement.content}</p>
+                      <h4 className="font-medium text-gray-900">
+                        {announcement.title}
+                      </h4>
+                      <p className="text-sm text-gray-700 mt-1">
+                        {announcement.content}
+                      </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        {format(new Date(announcement.createdAt), "MMM d, h:mm a")}
+                        {format(new Date(announcement.date), "MMM d, h:mm a")}
                       </p>
                     </div>
                   ))}
                 </div>
               )}
-                <div className="mt-4 text-center">
-                <a 
-                  href="/calendar" 
+              <div className="mt-4 text-center">
+                <a
+                  href="/calendar"
                   className="inline-flex items-center text-blue-600 hover:text-blue-800"
                 >
                   <Plus size={16} className="mr-1" />
@@ -267,7 +276,6 @@ export default function CompactCalendar() {
         </div>
       )}
 
-      {/* Error message */}
       {error && (
         <div className="absolute top-full right-0 mt-2 w-64 bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded shadow-md">
           <div className="flex">
@@ -281,10 +289,16 @@ export default function CompactCalendar() {
         .animate-fade-in {
           animation: fadeIn 0.2s ease-out;
         }
-        
+
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
       `}</style>
     </div>

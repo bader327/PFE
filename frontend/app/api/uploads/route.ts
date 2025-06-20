@@ -1,9 +1,8 @@
-import { writeFile } from 'fs/promises';
-import { Db, MongoClient, ObjectId } from 'mongodb';
-import { NextResponse } from 'next/server';
-import path from 'path';
-import { processExcelFile } from '../../../lib/excelParser';
-import { checkFpsConditions } from '../../../lib/fpsDetection';
+import { Db, MongoClient, ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
+import path from "path";
+import { processExcelFile } from "../../../lib/excelParser";
+import { checkFpsConditions } from "../../../lib/fpsDetection";
 
 interface HourlyData {
   produitsConformes: number;
@@ -20,7 +19,7 @@ interface FileDocument {
   bobinesIncompletes: number;
   ftq: number;
   tauxProduction: number;
-  tauxRejets: number;
+  tauxderejets: number;
   productionCible: number;
   uploadedAt: Date;
   hourlyData?: HourlyData[];
@@ -28,8 +27,9 @@ interface FileDocument {
 }
 
 // Use connection string from .env file
-const uri = process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/pfe_dashboard";
-const dbName = uri.split('/').pop() || 'pfe_dashboard';
+const uri =
+  process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/pfe_dashboard";
+const dbName = uri.split("/").pop() || "pfe_dashboard";
 
 // Create a new MongoClient instance with options
 const client = new MongoClient(uri, {
@@ -48,8 +48,8 @@ async function connectToDatabase(): Promise<Db> {
     console.log("Successfully connected to MongoDB.");
     return db;
   } catch (error) {
-    console.error('Failed to connect to MongoDB:', error);
-    throw new Error('Database connection failed');
+    console.error("Failed to connect to MongoDB:", error);
+    throw new Error("Database connection failed");
   }
 }
 
@@ -57,83 +57,69 @@ export async function POST(req: Request) {
   let db: Db | undefined;
   try {
     const formData = await req.formData();
-    const file = formData.get('file') as File;
-    const ligneId = formData.get('ligneId') as string;
-    
+    const file = formData.get("file") as File;
+    const ligneId = formData.get("ligneId") as string;
+    console.log(ligneId);
     if (!file) {
-      return NextResponse.json({ error: 'Fichier non fourni' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Fichier non fourni" },
+        { status: 400 }
+      );
     }
 
     // Create uploads directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
     await new Promise((resolve, reject) => {
-      const fs = require('fs');
+      const fs = require("fs");
       fs.mkdir(uploadDir, { recursive: true }, (err: any) => {
         if (err) reject(err);
         resolve(null);
       });
     });
-
+    console.log("here before getting file buffer");
     // Save file to disk
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const filename = `${Date.now()}-${file.name}`;
+    console.log("after getting bufffer");
     const filepath = path.join(uploadDir, filename);
-    await writeFile(filepath, fileBuffer);
-      try {
+    try {
       // Process Excel file from buffer
-      const { 
-        produitsConformes, 
+      const {
+        bobinesData,
+        produitsConformes,
         produitsNonConformes,
         bobinesIncompletes,
-        conformityRate: ftq,
-        productionRate: tauxProduction,
-        rejectRate: tauxRejets,
-        targetProduction: productionCible,
-        bobinesData,
-        hourlyData,
         serialsNOK,
-        serialsIncomplets
+        serialsIncomplets,
+        alertes,
+        ftq,
+        tauxDeProduction,
+        tauxderejets,
       } = await processExcelFile(fileBuffer.buffer);
       // Connect to MongoDB
       db = await connectToDatabase();
-
+      console.log(ftq, tauxDeProduction, "hereee");
       // Insert file record with proper ObjectId handling
-      const fileDoc = await db.collection('File').insertOne({
+      const fileDoc = await db.collection("File").insertOne({
         _id: new ObjectId(),
         path: `/uploads/${filename}`,
-        ligneId: ligneId ? new ObjectId(ligneId) : null,
+        ligneId: ligneId,
         produitsConformes,
         produitsNonConformes,
         bobinesIncompletes,
         ftq,
-        tauxProduction,
-        tauxRejets,
-        productionCible,
+        tauxProduction: tauxDeProduction,
         uploadedAt: new Date(),
         serialsNOK,
-        serialsIncomplets
+        serialsIncomplets,
+        tauxderejets,
       });
-
       const fileId = fileDoc.insertedId;
-
+      console.log(fileId);
       // Insert hourly data if available
-      if (hourlyData) {
-        const hourlyRecords = Object.entries(hourlyData).map(([hour, data]) => ({
-          _id: new ObjectId(),
-          fileId: fileId,
-          hour: parseInt(hour),
-          produitsConformes: data.produitsConformes,
-          produitsNonConformes: data.produitsNonConformes,
-          total: data.total
-        }));
-
-        if (hourlyRecords.length > 0) {
-          await db.collection('HourlyData').insertMany(hourlyRecords);
-        }
-      }
 
       // Format and check bobines
-      const formattedBobines = bobinesData.map(b => ({
+      const formattedBobines = bobinesData.map((b) => ({
         numero: b.numero.toString(),
         produit: b.produit,
         conforme: b.conforme,
@@ -146,23 +132,16 @@ export async function POST(req: Request) {
         qualityScore: b.nonConforme ? 0.7 : 1.0,
         incompleteness: 0,
         productType: b.produit,
-        defectType: b.nonConforme ? 
-          b.defauts.find(defaut => defaut) : 
-          undefined
+        defectType: b.nonConforme
+          ? b.defauts.find((defaut) => defaut)
+          : undefined,
       }));
-      const hourlyMetricsArray = hourlyData ? 
-        Object.entries(hourlyData).map(([hour, data]) => ({
-          hour: parseInt(hour),
-          produitsConformes: data.produitsConformes,
-          produitsNonConformes: data.produitsNonConformes,
-          total: data.total
-        })) : [];
 
-      const fpsConditionsMet = checkFpsConditions(formattedBobines, hourlyMetricsArray);
+      const fpsConditionsMet = checkFpsConditions(formattedBobines);
       let fpsId;
-      
+
       if (fpsConditionsMet) {
-        const fpsDoc = await db.collection('FPS1').insertOne({
+        const fpsDoc = await db.collection("FPS1").insertOne({
           _id: new ObjectId(),
           fileId: fileId,
           operateur: "À remplir",
@@ -171,18 +150,24 @@ export async function POST(req: Request) {
           numeroBobine: fpsConditionsMet.numeroBobine || "À préciser",
           cause: "À déterminer",
           actions: "À définir",
-          createdAt: new Date()
+          createdAt: new Date(),
         });
         fpsId = fpsDoc.insertedId;
       }
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         fileId: fileId.toString(),
         fpsCreated: !!fpsConditionsMet,
-        fpsId: fpsId?.toString()
+        fpsId: fpsId?.toString(),
+        produitsConformes: produitsConformes,
+        produitsNonConformes: produitsNonConformes,
+        bobinesIncompletes: bobinesIncompletes,
+        ftq,
+        tauxProduction: tauxDeProduction,
+        tauxRejets: tauxderejets ,
+        productionCible: 0,
       });
-
     } catch (error) {
       console.error("Error processing Excel file:", error);
       return NextResponse.json(
@@ -190,7 +175,6 @@ export async function POST(req: Request) {
         { status: 500 }
       );
     }
-
   } catch (error) {
     console.error("Error uploading file:", error);
     return NextResponse.json(
@@ -208,62 +192,63 @@ export async function GET(req: Request) {
   let db;
   try {
     const url = new URL(req.url);
-    const ligneId = url.searchParams.get('ligneId');
-    const date = url.searchParams.get('date');
-    
+    const ligneId = url.searchParams.get("ligneId");
+    const date = url.searchParams.get("date");
+
     let whereClause: any = {};
-    
+
     // Filter by ligne if ligneId is provided
     if (ligneId) {
       whereClause.ligneId = new ObjectId(ligneId);
     }
-    
+
     // Filter by date if provided
     if (date) {
       const startDate = new Date(date);
       startDate.setHours(0, 0, 0, 0);
-      
+
       const endDate = new Date(date);
       endDate.setHours(23, 59, 59, 999);
-      
+
       whereClause.uploadedAt = {
         $gte: startDate,
-        $lte: endDate
+        $lte: endDate,
       };
     }
-    
+
     // Connect to MongoDB
     db = await connectToDatabase();
-    
+
     // Fetch files with their related hourly data
-    const files = await db.collection('File')
+    const files = await db
+      .collection("File")
       .aggregate([
         { $match: whereClause },
         {
           $lookup: {
-            from: 'HourlyData',
-            localField: '_id',
-            foreignField: 'fileId',
-            as: 'hourlyData'
-          }
+            from: "HourlyData",
+            localField: "_id",
+            foreignField: "fileId",
+            as: "hourlyData",
+          },
         },
         {
           $lookup: {
-            from: 'FPS1',
-            localField: '_id',
-            foreignField: 'fileId',
-            as: 'fps'
-          }
+            from: "FPS1",
+            localField: "_id",
+            foreignField: "fileId",
+            as: "fps",
+          },
         },
-        { $sort: { uploadedAt: -1 } }
-      ]).toArray();
-    
+        { $sort: { uploadedAt: -1 } },
+      ])
+      .toArray();
+
     return NextResponse.json(files);
-    
   } catch (error) {
-    console.error('Error fetching files:', error);
+    console.error("Error fetching files:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch files' }, 
+      { error: "Failed to fetch files" },
       { status: 500 }
     );
   } finally {

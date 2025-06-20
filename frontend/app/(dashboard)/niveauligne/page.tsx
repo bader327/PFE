@@ -2,6 +2,59 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
+// Défauts et causes associées
+const defautsAvecCauses: Record<string, string[]> = {
+  "Dépassement de diamètre": [
+    "Erreur de programmation",
+    "Profil température non correspondant",
+    "Matière première NOK",
+    "Impureté dans la caméra contrôleur",
+  ],
+  "Mauvais marquage": [
+    "Impuretés sur le marqueur",
+    "Marqueur mal-positionné",
+    "Mauvaise recette",
+    "Vitesse excessive",
+    "Marqueur mal nettoyé",
+  ],
+  Claquage: [
+    "Température d’extrusion non adéquate",
+    "Matière détériorée",
+    "Impuretés dans la matière",
+  ],
+  "Résistance linéïque": [
+    "Tension trop importante",
+    "Composition erronée",
+    "Circuit de câblage non conforme",
+    "Filière non adéquate ou trop petite",
+    "Allongement trop important",
+    "Céramiques de la lyre en mauvais état",
+    "Vitesse incorrecte",
+  ],
+  "Diamètre de brins": [
+    "Filière endommagée",
+    "Mauvaise répartition",
+    "Tension importante",
+  ],
+  "Allongement des brins": [
+    "Pression dans les bobinoirs",
+    "Facteur de recuit incorrect",
+    "Panne électrique",
+  ],
+  "Nœud / Rétrécissement": [
+    "Température extrusion non adéquate",
+    "Matière détériorée ou impure",
+    "Mauvais trancannage",
+    "Mauvais séchage",
+    "Matière non homogène",
+    "Vitesse excessive",
+    "Mauvais guide-fil",
+    "Poussière dans le conducteur",
+    "Mauvaise forme de toron",
+  ],
+  // Ajoute ici d'autres défauts selon ta liste complète
+};
+
 const NiveauLignePage = () => {
   const router = useRouter();
 
@@ -19,6 +72,8 @@ const NiveauLignePage = () => {
   const handleInputChange = (rowIndex: number, field: string, value: any) => {
     const newRows = [...rows];
     newRows[rowIndex][field] = value;
+    // Réinitialise la cause si le défaut change
+    if (field === "defaut") newRows[rowIndex].cause = "";
     setRows(newRows);
   };
 
@@ -105,14 +160,20 @@ const NiveauLignePage = () => {
                   />
                 </td>
                 <td className="p-2 border">
-                  <input
+                  <select
                     value={row.defaut}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "defaut", e.target.value)
                     }
                     className="w-full p-1 border rounded"
-                    placeholder="Défaut"
-                  />
+                  >
+                    <option value="">-- Sélectionner un défaut --</option>
+                    {Object.keys(defautsAvecCauses).map((defaut) => (
+                      <option key={defaut} value={defaut}>
+                        {defaut}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="p-2 border">
                   <input
@@ -135,14 +196,21 @@ const NiveauLignePage = () => {
                   />
                 </td>
                 <td className="p-2 border">
-                  <input
+                  <select
                     value={row.cause}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "cause", e.target.value)
                     }
                     className="w-full p-1 border rounded"
-                    placeholder="Cause"
-                  />
+                    disabled={!row.defaut}
+                  >
+                    <option value="">-- Sélectionner une cause --</option>
+                    {defautsAvecCauses[row.defaut]?.map((cause) => (
+                      <option key={cause} value={cause}>
+                        {cause}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="p-2 border text-center text-gray-400">--</td>
                 <td className="p-2 border">

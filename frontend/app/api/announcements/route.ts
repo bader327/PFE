@@ -1,9 +1,10 @@
-import { Db, MongoClient, ObjectId } from 'mongodb';
-import { NextResponse } from 'next/server';
+import { Db, MongoClient, ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
 
 // Use connection string from .env file
-const uri = process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/pfe_dashboard";
-const dbName = uri.split('/').pop() || 'pfe_dashboard';
+const uri =
+  process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/pfe_dashboard";
+const dbName = uri.split("/").pop() || "pfe_dashboard";
 
 // Create a new MongoClient instance
 const client = new MongoClient(uri, {
@@ -13,7 +14,7 @@ const client = new MongoClient(uri, {
 });
 
 // Function to handle database connection
-async function connectToDatabase(): Promise<Db> {
+export async function connectToDatabase(): Promise<Db> {
   try {
     await client.connect();
     const db = client.db(dbName);
@@ -21,8 +22,8 @@ async function connectToDatabase(): Promise<Db> {
     console.log("Successfully connected to MongoDB.");
     return db;
   } catch (error) {
-    console.error('Failed to connect to MongoDB:', error);
-    throw new Error('Database connection failed');
+    console.error("Failed to connect to MongoDB:", error);
+    throw new Error("Database connection failed");
   }
 }
 
@@ -31,24 +32,25 @@ interface Announcement {
   title: string;
   content: string;
   date: Date;
-  type: 'info' | 'warning' | 'alert';
+  type: "info" | "warning" | "alert";
 }
 
 export async function GET() {
   let db: Db | undefined;
   try {
     db = await connectToDatabase();
-    
-    const announcements = await db.collection('Announcement')
+
+    const announcements = await db
+      .collection("Announcement")
       .find<Announcement>({})
       .sort({ date: -1 })
       .toArray();
-    
+
     return NextResponse.json(announcements);
   } catch (error) {
-    console.error('Error fetching announcements:', error);
+    console.error("Error fetching announcements:", error);
     return NextResponse.json(
-      { error: 'Failed to fetch announcements' },
+      { error: "Failed to fetch announcements" },
       { status: 500 }
     );
   } finally {
@@ -61,32 +63,33 @@ export async function GET() {
 export async function POST(req: Request) {
   let db: Db | undefined;
   try {
-    const { title, content, type } = await req.json();
+    const { title, content, type, date } = await req.json();
 
-    if (!title || !content || !type) {
+    if (!title || !content || !type || !date) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
+    const formattedDate = new Date(date);
 
     db = await connectToDatabase();
-    
+
     const announcement = {
       _id: new ObjectId(),
       title,
       content,
       type,
-      date: new Date()
+      date: formattedDate,
     };
 
-    await db.collection('Announcement').insertOne(announcement);
+    await db.collection("Announcement").insertOne(announcement);
 
     return NextResponse.json(announcement);
   } catch (error) {
-    console.error('Error creating announcement:', error);
+    console.error("Error creating announcement:", error);
     return NextResponse.json(
-      { error: 'Failed to create announcement' },
+      { error: "Failed to create announcement" },
       { status: 500 }
     );
   } finally {
@@ -103,37 +106,36 @@ export async function PUT(req: Request) {
 
     if (!id || !title || !content || !type) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
     db = await connectToDatabase();
-    
-    const result = await db.collection('Announcement').updateOne(
+
+    const result = await db.collection("Announcement").updateOne(
       { _id: new ObjectId(id) },
       {
         $set: {
           title,
           content,
           type,
-          date: new Date()
-        }
+        },
       }
     );
 
     if (result.matchedCount === 0) {
       return NextResponse.json(
-        { error: 'Announcement not found' },
+        { error: "Announcement not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating announcement:', error);
+    console.error("Error updating announcement:", error);
     return NextResponse.json(
-      { error: 'Failed to update announcement' },
+      { error: "Failed to update announcement" },
       { status: 500 }
     );
   } finally {
@@ -147,33 +149,30 @@ export async function DELETE(req: Request) {
   let db: Db | undefined;
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: 'ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
     db = await connectToDatabase();
-    
-    const result = await db.collection('Announcement').deleteOne({
-      _id: new ObjectId(id)
+
+    const result = await db.collection("Announcement").deleteOne({
+      _id: new ObjectId(id),
     });
 
     if (result.deletedCount === 0) {
       return NextResponse.json(
-        { error: 'Announcement not found' },
+        { error: "Announcement not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting announcement:', error);
+    console.error("Error deleting announcement:", error);
     return NextResponse.json(
-      { error: 'Failed to delete announcement' },
+      { error: "Failed to delete announcement" },
       { status: 500 }
     );
   } finally {

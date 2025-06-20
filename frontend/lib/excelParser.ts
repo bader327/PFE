@@ -1,37 +1,10 @@
 import * as xlsx from "xlsx";
-
-interface BobineData {
-  numero: number;
-  produit: string;
-  conforme: boolean;
-  nonConforme: boolean;
-  incomplete: boolean;
-  reportType: string;
-  defauts: string[];
-}
-
-interface ProcessedData {
-  bobinesData: BobineData[];
-  produitsConformes: number;
-  produitsNonConformes: number;
-  bobinesIncompletes: number;
-  serialsNOK: number[];
-  serialsIncomplets: number[];
-  alertes: string[];
-  ftq: number;
-  tauxDeProduction: number;
-  productionRate: number;
-  rejectRate: number;
-  conformityRate: number;
-  targetProduction: number;
-  hourlyData: { [key: string]: any };
-}
-
-export async function processExcelFile(fileBuffer: ArrayBuffer): Promise<ProcessedData> {
+export async function processExcelFile(fileBuffer: ArrayBuffer) {
   const workbook = xlsx.read(fileBuffer);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const jsonData = xlsx.utils.sheet_to_json(sheet, { defval: "" });
-
+  console.log("json data length ", jsonData.length);
+  // console.log("json ", jsonData);
   const bobinesData = jsonData.map((row: any) => ({
     numero: (row["Serial Number"] as number) || -1,
     produit: row["Item"] || "",
@@ -47,7 +20,7 @@ export async function processExcelFile(fileBuffer: ArrayBuffer): Promise<Process
       row["Défaut 5"],
     ],
   }));
-
+  console.log("bobines data length ", bobinesData.length);
   const produitsConformes = bobinesData.filter((b) => b.conforme).length;
   const produitsNonConformes = bobinesData.filter((b) => b.nonConforme).length;
   const bobinesIncompletes = bobinesData.filter((b) => b.incomplete).length;
@@ -62,25 +35,18 @@ export async function processExcelFile(fileBuffer: ArrayBuffer): Promise<Process
   const alertes = [];
 
   const ftq = (produitsConformes / bobinesData.length) * 100;
-  const tauxDeProduction = (bobinesData.length / 60) * 100;
+  const tauxDeProduction = (bobinesData.length / 60) * 60;
+  const tauxderejets = (produitsNonConformes / bobinesData.length) * 100;
+  const productionCible = produitsConformes; 
   
-  // Calculate additional rates
-  const productionRate = tauxDeProduction;
-  const rejectRate = (produitsNonConformes / bobinesData.length) * 100;
-  const conformityRate = ftq;
-  const targetProduction = 100; // Default target
 
-  // Mock hourly data
-  const hourlyData: { [key: string]: any } = {};
-  for (let hour = 0; hour < 24; hour++) {
-    hourlyData[hour.toString()] = {
-      production: Math.floor(Math.random() * 100),
-      defects: Math.floor(Math.random() * 10),
-    };
-  }
-
-  // Check for FPS conditions
-  for (let bobineIndice = 0; bobineIndice < bobinesData.length - 2; ++bobineIndice) {
+  // sort bobine data ascendingly based on numero
+  for (
+    let bobineIndice = 0;
+    bobineIndice < bobinesData.length - 2;
+    ++bobineIndice
+  ) {
+    // 1ere bobine : bobinesData[bobineIndice], 2eme bobine: bobinesData[bobineIndice+1], 3eme
     const fb = bobinesData[bobineIndice];
     const sb = bobinesData[bobineIndice + 1];
     const tb = bobinesData[bobineIndice + 2];
@@ -97,7 +63,17 @@ export async function processExcelFile(fileBuffer: ArrayBuffer): Promise<Process
   if (bobinesIncompletes > 3) {
     alertes.push("⚠️ Trop de bobines incomplètes");
   }
-
+  // console.log(
+  //   bobinesData,
+  //   produitsConformes,
+  //   produitsNonConformes,
+  //   bobinesIncompletes,
+  //   serialsNOK,
+  //   serialsIncomplets,
+  //   alertes,
+  //   ftq,
+  //   tauxDeProduction
+  // );
   return {
     bobinesData,
     produitsConformes,
@@ -108,11 +84,8 @@ export async function processExcelFile(fileBuffer: ArrayBuffer): Promise<Process
     alertes,
     ftq,
     tauxDeProduction,
-    productionRate,
-    rejectRate,
-    conformityRate,
-    targetProduction,
-    hourlyData,
+    tauxderejets,
+    productionCible,
   };
 }
 
@@ -130,6 +103,6 @@ function checkFirstConditionFPS(
   return reportTypeCondition && defaultsCondition;
 }
 
-function checkDefault(defauts: string[][], defaultToCheck: number): boolean {
+function checkDefault(defauts: string[][], defaultToCheck: number) {
   return defauts.every((v) => v[defaultToCheck] === defauts[0][defaultToCheck]);
 }
