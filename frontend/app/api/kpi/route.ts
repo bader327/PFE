@@ -1,14 +1,18 @@
+import { MongoClient } from "mongodb";
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "../announcements/route";
+
+const uri = process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/pfe_dashboard";
 
 export async function GET(req: Request) {
-  const db = await connectToDatabase();
-  const url = new URL(req.url);
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - 24 * 3600 * 1000);
-  console.log(now, yesterday);
-
+  const client = new MongoClient(uri);
   try {
+    await client.connect();
+    const db = client.db();
+    const url = new URL(req.url);
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 3600 * 1000);
+    console.log(now, yesterday);
+
     const filter = {
       uploadedAt: {
         $gte: yesterday,
@@ -114,5 +118,7 @@ export async function GET(req: Request) {
       { error: "Erreur lors de la récupération des KPI" },
       { status: 500 }
     );
+  } finally {
+    await client.close();
   }
 }

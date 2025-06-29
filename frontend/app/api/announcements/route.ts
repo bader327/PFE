@@ -1,31 +1,9 @@
-import { Db, MongoClient, ObjectId } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
 // Use connection string from .env file
 const uri =
   process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/pfe_dashboard";
-const dbName = uri.split("/").pop() || "pfe_dashboard";
-
-// Create a new MongoClient instance
-const client = new MongoClient(uri, {
-  maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-});
-
-// Function to handle database connection
-export async function connectToDatabase(): Promise<Db> {
-  try {
-    await client.connect();
-    const db = client.db(dbName);
-    await db.command({ ping: 1 });
-    console.log("Successfully connected to MongoDB.");
-    return db;
-  } catch (error) {
-    console.error("Failed to connect to MongoDB:", error);
-    throw new Error("Database connection failed");
-  }
-}
 
 interface Announcement {
   _id: ObjectId;
@@ -35,14 +13,25 @@ interface Announcement {
   type: "info" | "warning" | "alert";
 }
 
-export async function GET() {
-  let db: Db | undefined;
+export async function GET(req: Request) {
+  const client = new MongoClient(uri);
   try {
-    db = await connectToDatabase();
+    await client.connect();
+    const db = client.db();
+
+    // Parse query parameters
+    const { searchParams } = new URL(req.url);
+    const ligneId = searchParams.get("ligneId");
+
+    // Build filter based on ligneId
+    const filter: any = {};
+    if (ligneId) {
+      filter.ligneId = ligneId;
+    }
 
     const announcements = await db
       .collection("Announcement")
-      .find<Announcement>({})
+      .find<Announcement>(filter)
       .sort({ date: -1 })
       .toArray();
 
@@ -54,14 +43,12 @@ export async function GET() {
       { status: 500 }
     );
   } finally {
-    if (client) {
-      await client.close();
-    }
+    await client.close();
   }
 }
 
 export async function POST(req: Request) {
-  let db: Db | undefined;
+  const client = new MongoClient(uri);
   try {
     const { title, content, type, date } = await req.json();
 
@@ -73,7 +60,8 @@ export async function POST(req: Request) {
     }
     const formattedDate = new Date(date);
 
-    db = await connectToDatabase();
+    await client.connect();
+    const db = client.db();
 
     const announcement = {
       _id: new ObjectId(),
@@ -93,14 +81,12 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   } finally {
-    if (client) {
-      await client.close();
-    }
+    await client.close();
   }
 }
 
 export async function PUT(req: Request) {
-  let db: Db | undefined;
+  const client = new MongoClient(uri);
   try {
     const { id, title, content, type } = await req.json();
 
@@ -111,7 +97,8 @@ export async function PUT(req: Request) {
       );
     }
 
-    db = await connectToDatabase();
+    await client.connect();
+    const db = client.db();
 
     const result = await db.collection("Announcement").updateOne(
       { _id: new ObjectId(id) },
@@ -139,14 +126,12 @@ export async function PUT(req: Request) {
       { status: 500 }
     );
   } finally {
-    if (client) {
-      await client.close();
-    }
+    await client.close();
   }
 }
 
 export async function DELETE(req: Request) {
-  let db: Db | undefined;
+  const client = new MongoClient(uri);
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -155,7 +140,8 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
-    db = await connectToDatabase();
+    await client.connect();
+    const db = client.db();
 
     const result = await db.collection("Announcement").deleteOne({
       _id: new ObjectId(id),
@@ -176,8 +162,6 @@ export async function DELETE(req: Request) {
       { status: 500 }
     );
   } finally {
-    if (client) {
-      await client.close();
-    }
+    await client.close();
   }
 }

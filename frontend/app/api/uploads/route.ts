@@ -2,7 +2,6 @@ import { Db, MongoClient, ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import path from "path";
 import { processExcelFile } from "../../../lib/excelParser";
-import { checkFpsConditions } from "../../../lib/fpsDetection";
 
 interface HourlyData {
   produitsConformes: number;
@@ -39,7 +38,7 @@ const client = new MongoClient(uri, {
 });
 
 // Function to handle database connection
-async function connectToDatabase(): Promise<Db> {
+export async function connectToDatabase(): Promise<Db> {
   try {
     await client.connect();
     const db = client.db(dbName);
@@ -59,6 +58,9 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const ligneId = formData.get("ligneId") as string;
+    const fileDateStr = (formData.get("fileDate") as string) ?? "";
+    const fileDate = fileDateStr ? new Date(fileDateStr) : new Date();
+    console.log(formData.get("fileDate"), fileDate);
     console.log(ligneId);
     if (!file) {
       return NextResponse.json(
@@ -95,6 +97,7 @@ export async function POST(req: Request) {
         ftq,
         tauxDeProduction,
         tauxderejets,
+        detectedFpsArr,
       } = await processExcelFile(fileBuffer.buffer);
       // Connect to MongoDB
       db = await connectToDatabase();
@@ -113,6 +116,8 @@ export async function POST(req: Request) {
         serialsNOK,
         serialsIncomplets,
         tauxderejets,
+        detectedFps: detectedFpsArr,
+        fileDate,
       });
       const fileId = fileDoc.insertedId;
       console.log(fileId);
@@ -137,36 +142,17 @@ export async function POST(req: Request) {
           : undefined,
       }));
 
-      const fpsConditionsMet = checkFpsConditions(formattedBobines);
-      let fpsId;
-
-      if (fpsConditionsMet) {
-        const fpsDoc = await db.collection("FPS1").insertOne({
-          _id: new ObjectId(),
-          fileId: fileId,
-          operateur: "À remplir",
-          defaut: fpsConditionsMet.defaut || "À préciser",
-          produit: fpsConditionsMet.produit || "À préciser",
-          numeroBobine: fpsConditionsMet.numeroBobine || "À préciser",
-          cause: "À déterminer",
-          actions: "À définir",
-          createdAt: new Date(),
-        });
-        fpsId = fpsDoc.insertedId;
-      }
-
       return NextResponse.json({
         success: true,
         fileId: fileId.toString(),
-        fpsCreated: !!fpsConditionsMet,
-        fpsId: fpsId?.toString(),
         produitsConformes: produitsConformes,
         produitsNonConformes: produitsNonConformes,
         bobinesIncompletes: bobinesIncompletes,
         ftq,
         tauxProduction: tauxDeProduction,
-        tauxRejets: tauxderejets ,
-        productionCible: 0,
+        tauxRejets: tauxderejets,
+        productionCible: bobinesData.length,
+        detectedFps: detectedFpsArr,
       });
     } catch (error) {
       console.error("Error processing Excel file:", error);

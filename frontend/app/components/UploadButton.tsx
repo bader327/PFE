@@ -1,89 +1,107 @@
-import React, { useState } from 'react';
-import { UploadCloud, FileUp, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Loader2, UploadCloud } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 
 interface UploadButtonProps {
   ligneId?: string;
   onUploadSuccess?: (data: any) => void;
   className?: string;
+  date?: Date;
 }
 
-export default function UploadButton({ 
-  ligneId, 
+export default function UploadButton({
+  ligneId,
   onUploadSuccess,
-  className = ''
+  date,
+  className = "",
 }: UploadButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log(e);
     if (!e.target.files || e.target.files.length === 0) {
       return;
     }
-    
+
     const file = e.target.files[0];
-    
+    console.log(file);
     // Check if the file is an Excel file
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
-      setError('Veuillez sélectionner un fichier Excel (.xlsx, .xls) ou CSV.');
+    if (
+      !file.name.endsWith(".xlsx") &&
+      !file.name.endsWith(".xls") &&
+      !file.name.endsWith(".csv")
+    ) {
+      setError("Veuillez sélectionner un fichier Excel (.xlsx, .xls) ou CSV.");
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      
+      formData.append("file", file);
+
       if (ligneId) {
-        formData.append('ligneId', ligneId);
+        formData.append("ligneId", ligneId);
       }
-      
-      const response = await fetch('/api/uploads', {
-        method: 'POST',
+
+      if (date) {
+        formData.append("fileDate", date.toDateString());
+      }
+
+      const response = await fetch("/api/uploads", {
+        method: "POST",
         body: formData,
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors du téléchargement');
+        throw new Error(errorData.error || "Erreur lors du téléchargement");
       }
-      
+
       const data = await response.json();
-      
+
       // If a FPS is required based on detected conditions
       if (data.fpsRequired) {
         // Alert the user that a FPS has been automatically created
-        alert('Un FPS a été automatiquement créé suite à la détection de conditions nécessitant une analyse.');
+        alert(
+          "Un FPS a été automatiquement créé suite à la détection de conditions nécessitant une analyse."
+        );
       }
-      
+
       // Call the success callback if provided
       if (onUploadSuccess) {
         onUploadSuccess(data);
       }
-      
+
       // Refresh the current page
-      router.refresh();
-      
+      // router.refresh();
     } catch (err) {
-      console.error('Error uploading file:', err);
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue lors du téléchargement');
+      console.error("Error uploading file:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Une erreur est survenue lors du téléchargement"
+      );
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <label 
-        htmlFor="file-upload" 
+      <label
+        htmlFor="file-upload"
         className={`
           flex items-center justify-center space-x-2 px-4 py-2 rounded-md
-          ${loading 
-            ? 'bg-gray-300 cursor-not-allowed' 
-            : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'} 
+          ${
+            loading
+              ? "bg-gray-300 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+          } 
           text-white font-medium transition-colors
         `}
       >
@@ -99,7 +117,7 @@ export default function UploadButton({
           </>
         )}
       </label>
-      
+
       <input
         id="file-upload"
         type="file"
@@ -108,10 +126,8 @@ export default function UploadButton({
         onChange={handleUpload}
         disabled={loading}
       />
-      
-      {error && (
-        <p className="text-red-500 mt-2 text-sm">{error}</p>
-      )}
+
+      {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
     </div>
   );
 }

@@ -50,7 +50,7 @@ model File {
   path                String
   ligneId             String?   @db.ObjectId
   hourlyData          HourlyData[]
-  fps1                Fps1?
+  fps1                Fps1[]
   
   // Extracted data
   produitsConformes     Int      @default(0)
@@ -76,8 +76,9 @@ model HourlyData {
 
 model Fps1 {
   id             String  @id @default(auto()) @map("_id") @db.ObjectId
-  fileId         String  @unique @db.ObjectId
-  file           File    @relation(fields: [fileId], references: [id])
+  fileId         String? @db.ObjectId
+  file           File?   @relation(fields: [fileId], references: [id])
+
   operateur      String
   defaut         String
   produit        String

@@ -55,10 +55,10 @@ export default function LignePage() {
     heures: 768,
   });
   const [kpis, setKpis] = useState({
-    productionRate: 85,
-    rejectRate: 15,
-    conformityRate: 87,
-    targetProduction: 95,
+    productionRate: 0,
+    rejectRate: 0,
+    conformityRate: 0,
+    targetProduction: 0,
   });
   const [kpiChartData, setKpiChartData] = useState<any[]>([]);
   const [fpsAlert, setFpsAlert] = useState<string | number | null>(null);
@@ -79,6 +79,7 @@ export default function LignePage() {
   });
   const [fpsRecords, setFpsRecords] = useState<any[]>([]);
   const [showFpsModal, setShowFpsModal] = useState(false);
+  const [detectedFps, setDetectedFps] = useState<any[]>([]);
   const [selectedHour, setSelectedHour] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
@@ -90,12 +91,6 @@ export default function LignePage() {
       conformes: Math.floor(Math.random() * 500),
       nonConformes: Math.floor(Math.random() * 300),
       heures: Math.floor(Math.random() * 8) + 1,
-    });
-    setKpis({
-      productionRate: Math.random() * 100,
-      rejectRate: Math.random() * 100,
-      conformityRate: Math.random() * 100,
-      targetProduction: Math.random() * 300,
     });
     setKpiChartData(generateRandomKpiData());
 
@@ -119,6 +114,7 @@ export default function LignePage() {
       });
       console.log(reqResult);
       const result = await reqResult.json();
+      setDetectedFps(result.detectedFps || []);
       // Update KPI data with the processed results
       setKpiData({
         summary: {
@@ -148,7 +144,7 @@ export default function LignePage() {
         productionRate: result.tauxProduction,
         rejectRate: result.tauxRejets,
         conformityRate: result.ftq ?? 0,
-        targetProduction: result.targetProduction ?? 0,
+        targetProduction: result.productionCible ?? 0,
       });
 
       // Update random data for charts
@@ -215,13 +211,54 @@ export default function LignePage() {
               </button>
 
               {/* Alerte affichée */}
-              {fpsAlert && (
-                <div className="mt-2 text-sm bg-red-100 text-red-600 rounded-md px-4 py-2 shadow animate-pulse">
-                  ⚠ FPS détecté : Numéro #{fpsAlert}
-                </div>
-              )}
+              {detectedFps.map((fps, idx) => (
+  <div
+    key={fps.bobine}
+    className="relative mt-6 w-full max-w-xl rounded-2xl border border-red-200 bg-gradient-to-r from-white via-red-50 to-white px-6 py-5 shadow-lg ring-1 ring-red-100 transition-transform duration-300 hover:scale-[1.02] hover:shadow-xl"
+  >
+    {/* Badge d'alerte */}
+    <div className="absolute -top-3 left-4 flex items-center gap-1 rounded-full bg-red-500 px-3 py-1 text-xs font-semibold text-white shadow-md animate-bounce">
+      ⚠️ Alerte FPS
+    </div>
+
+    {/* Contenu principal */}
+    <div className="flex items-start gap-4">
+      {/* Icône animée */}
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 text-red-600 shadow-inner">
+        <svg
+          className="h-6 w-6 animate-pulse"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 9v2m0 4h.01M5.07 5.07l1.41 1.41M1 12h2m2.93 6.93l1.41-1.41M12 1v2m6.07 1.93l-1.41 1.41M23 12h-2m-2.93 6.93l-1.41-1.41M12 23v-2"
+          />
+        </svg>
+      </div>
+
+      {/* Texte */}
+      <div className="flex-1">
+        <h4 className="text-base font-semibold text-red-700 mb-1">
+          Défaut détecté sur une bobine
+        </h4>
+        <p className="text-sm text-gray-700">
+          Une erreur critique a été identifiée sur la{" "}
+          <span className="font-bold text-red-600">
+            bobine #{fps["bobine"]}
+          </span>
+          . Merci de procéder à une vérification immédiate.
+        </p>
+      </div>
+    </div>
+  </div>
+              ))}
             </div>
-          </div>
+            </div>
+
           {/* Sélecteur de date */}
           <select className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full">
             <option value="date-1">
