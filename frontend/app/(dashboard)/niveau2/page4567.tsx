@@ -1,12 +1,21 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import Image from "next/image"
-import coficabLogo from "../../public/coficab-logo.png"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+interface Page4567Props {
+  currentSection?: string;
+}
 
 const steps = [
   { id: "01", name: "D1-D2", time: 0.5 },
@@ -17,8 +26,8 @@ const steps = [
   { id: "06", name: "D5-Corrective Actions", time: 0.5 },
   { id: "07", name: "D6-Effectiveness control", time: 5 },
   { id: "08", name: "D7-Prevention", time: 0.5 },
-  { id: "09", name: "NC Spools Follow-up & NQ Cost", time: 0.5 }
-]
+  { id: "09", name: "NC Spools Follow-up & NQ Cost", time: 0.5 },
+];
 
 interface Page4567Props {
   currentSection?: string;
@@ -31,7 +40,6 @@ export default function Page4567({ currentSection }: Page4567Props) {
       <Card className="border-2">
         <CardHeader className="bg-blue-900 text-white">
           <div className="flex justify-between items-center">
-            <Image src={coficabLogo} alt="COFICAB" width={32} height={32} className="object-contain" />
             <CardTitle>8D Process Dashboard</CardTitle>
           </div>
         </CardHeader>
@@ -41,7 +49,7 @@ export default function Page4567({ currentSection }: Page4567Props) {
               8D Methodology Steps Follow-up
               <span className="float-right">Steps Time</span>
             </div>
-            
+
             {steps.map((step) => (
               <div key={step.id} className="flex items-center gap-4">
                 <div className="w-8">{step.id}</div>
@@ -65,8 +73,8 @@ export default function Page4567({ currentSection }: Page4567Props) {
         <CardHeader className="bg-blue-900 text-white p-2">
           <div className="flex justify-end">
             <Label className="text-white">Issue Date:</Label>
-            <Input 
-              className="w-24 ml-2 h-6 bg-white" 
+            <Input
+              className="w-24 ml-2 h-6 bg-white"
               defaultValue="26/09/2023"
             />
           </div>
@@ -94,11 +102,11 @@ export default function Page4567({ currentSection }: Page4567Props) {
                     <Input className="h-6" />
                   </TableCell>
                   <TableCell className="bg-gray-200">
-                    <Input 
-                      className="h-6" 
-                      type="number" 
-                      min="0" 
-                      max="100" 
+                    <Input
+                      className="h-6"
+                      type="number"
+                      min="0"
+                      max="100"
                       defaultValue="0"
                     />
                   </TableCell>
@@ -126,7 +134,6 @@ export default function Page4567({ currentSection }: Page4567Props) {
         <CardHeader className="bg-blue-900 text-white">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <Image src={coficabLogo} alt="COFICAB" width={32} height={32} className="object-contain" />
               <div>
                 <span className="font-bold">1D</span>
                 <span className="mx-2">-</span>
@@ -261,7 +268,6 @@ export default function Page4567({ currentSection }: Page4567Props) {
       <Card className="border-2">
         <CardHeader className="bg-blue-900 text-white">
           <div className="flex justify-between items-center">
-            <Image src={coficabLogo} alt="COFICAB" width={32} height={32} className="object-contain" />
             <CardTitle>Criticality of the customer incident</CardTitle>
           </div>
         </CardHeader>
@@ -269,10 +275,14 @@ export default function Page4567({ currentSection }: Page4567Props) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="bg-green-700 text-white">Incident type</TableHead>
+                <TableHead className="bg-green-700 text-white">
+                  Incident type
+                </TableHead>
                 <TableHead>Customer impact</TableHead>
                 <TableHead>Special characteristic</TableHead>
-                <TableHead>Number of impacted customers by the incident</TableHead>
+                <TableHead>
+                  Number of impacted customers by the incident
+                </TableHead>
                 <TableHead>Potential escalation</TableHead>
               </TableRow>
             </TableHeader>
@@ -301,7 +311,9 @@ export default function Page4567({ currentSection }: Page4567Props) {
             <TableHeader>
               <TableRow>
                 <TableHead>Special characteristic</TableHead>
-                <TableHead>Number of impacted customers by the incident</TableHead>
+                <TableHead>
+                  Number of impacted customers by the incident
+                </TableHead>
                 <TableHead>Customer impact</TableHead>
                 <TableHead>Result</TableHead>
                 <TableHead>Criticality classification</TableHead>
@@ -320,9 +332,13 @@ export default function Page4567({ currentSection }: Page4567Props) {
                     <Input defaultValue="Different from 'End of CoP'" />
                   </TableCell>
                   <TableCell>
-                    <Input defaultValue={`Total calculated points ${index + 1}`} />
+                    <Input
+                      defaultValue={`Total calculated points ${index + 1}`}
+                    />
                   </TableCell>
-                  <TableCell className={index < 2 ? "bg-red-100" : "bg-green-100"}>
+                  <TableCell
+                    className={index < 2 ? "bg-red-100" : "bg-green-100"}
+                  >
                     <Input />
                   </TableCell>
                 </TableRow>
@@ -343,5 +359,5 @@ export default function Page4567({ currentSection }: Page4567Props) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

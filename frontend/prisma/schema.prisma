@@ -1,4 +1,3 @@
-// This is your Prisma schema file.
 generator client {
   provider = "prisma-client-js"
 }
@@ -31,8 +30,8 @@ model User {
   name      String
   email     String   @unique
   password  String
-  userType  UserType @default(OPERATEUR)
-  ligneId   String?  @db.ObjectId // si un utilisateur peut être sans ligne, sinon enlever le ?
+  userType  UserType
+  ligneId   String?  @db.ObjectId
   ligne     Ligne?   @relation(fields: [ligneId], references: [id])
 }
 
@@ -52,16 +51,15 @@ model File {
   hourlyData          HourlyData[]
   fps1                Fps1[]
   
-  // Extracted data
   produitsConformes     Int      @default(0)
   produitsNonConformes  Int      @default(0)
   bobinesIncompletes    Int      @default(0)
   ftq                   Float    @default(0)
   tauxProduction        Float    @default(0)
-  tauxRejets           Float    @default(0)
+  tauxRejets            Float    @default(0)
   productionCible       Int      @default(0)
-  uploadedAt           DateTime @default(now())
-  ligne               Ligne?   @relation(fields: [ligneId], references: [id])
+  uploadedAt            DateTime @default(now())
+  ligne                 Ligne?   @relation(fields: [ligneId], references: [id])
 }
 
 model HourlyData {
@@ -129,7 +127,6 @@ model Fps3 {
 }
 
 enum UserType {
-  MANAGER
-  OPERATEUR
-  CADRE
+  CHEF_ATELIER
+  QUALITICIEN
 }

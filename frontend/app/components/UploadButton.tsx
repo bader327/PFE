@@ -1,6 +1,6 @@
 import { Loader2, UploadCloud } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 interface UploadButtonProps {
   ligneId?: string;
@@ -18,6 +18,7 @@ export default function UploadButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e);
@@ -49,7 +50,17 @@ export default function UploadButton({
       }
 
       if (date) {
-        formData.append("fileDate", date.toDateString());
+        console.log(date);
+        const d = new Date();
+        date.setHours(
+          d.getHours(),
+          d.getMinutes(),
+          d.getSeconds(),
+          d.getMilliseconds()
+        );
+        const dateStr = date.toUTCString();
+        console.log(dateStr);
+        formData.append("fileDate", dateStr);
       }
 
       const response = await fetch("/api/uploads", {
@@ -88,6 +99,7 @@ export default function UploadButton({
       );
     } finally {
       setLoading(false);
+      if (inputRef && inputRef.current) inputRef.current.value = "";
     }
   };
 
@@ -125,6 +137,7 @@ export default function UploadButton({
         className="hidden"
         onChange={handleUpload}
         disabled={loading}
+        ref={inputRef}
       />
 
       {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}

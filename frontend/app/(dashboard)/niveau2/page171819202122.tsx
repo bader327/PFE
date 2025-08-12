@@ -1,15 +1,27 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
-import Image from "next/image"
-import coficabLogo from "../../public/coficab-logo.png"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import Image from "next/image";
+import coficabLogo from "../../../public/COFICAB.jpg";
+import { Textarea } from "../../components/ui/textarea";
+interface Page171819202122Props {
+  currentSection?: string;
+}
 
-export default function Page171819202122() {
+export default function Page171819202122({
+  currentSection,
+}: Page171819202122Props) {
   return (
     <div className="space-y-8 p-6">
       {/* Step 3 - Potential Causes Validation */}
@@ -35,13 +47,27 @@ export default function Page171819202122() {
               {Array.from({ length: 8 }).map((_, index) => (
                 <TableRow key={index}>
                   <TableCell className="bg-blue-100">{index + 1}</TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -65,7 +91,9 @@ export default function Page171819202122() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead rowSpan={2} className="bg-blue-100">Occurrence</TableHead>
+                  <TableHead rowSpan={2} className="bg-blue-100">
+                    Occurrence
+                  </TableHead>
                   <TableHead>Potential causes</TableHead>
                   <TableHead>Why1</TableHead>
                   <TableHead>Why2</TableHead>
@@ -77,12 +105,24 @@ export default function Page171819202122() {
               <TableBody>
                 {Array.from({ length: 3 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -91,7 +131,9 @@ export default function Page171819202122() {
             <Table className="mt-4">
               <TableHeader>
                 <TableRow>
-                  <TableHead rowSpan={2} className="bg-yellow-100">Non Detection</TableHead>
+                  <TableHead rowSpan={2} className="bg-yellow-100">
+                    Non Detection
+                  </TableHead>
                   <TableHead>Potential causes</TableHead>
                   <TableHead>Why1</TableHead>
                   <TableHead>Why2</TableHead>
@@ -103,12 +145,24 @@ export default function Page171819202122() {
               <TableBody>
                 {Array.from({ length: 3 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -117,7 +171,9 @@ export default function Page171819202122() {
             <Table className="mt-4">
               <TableHeader>
                 <TableRow>
-                  <TableHead rowSpan={2} className="bg-green-100">Systemic</TableHead>
+                  <TableHead rowSpan={2} className="bg-green-100">
+                    Systemic
+                  </TableHead>
                   <TableHead>Potential causes</TableHead>
                   <TableHead>Why1</TableHead>
                   <TableHead>Why2</TableHead>
@@ -129,12 +185,24 @@ export default function Page171819202122() {
               <TableBody>
                 {Array.from({ length: 3 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -147,21 +215,27 @@ export default function Page171819202122() {
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <div className="bg-blue-200 p-2 text-center">ROOT CAUSES OF OCCURRENCE</div>
+                <div className="bg-blue-200 p-2 text-center">
+                  ROOT CAUSES OF OCCURRENCE
+                </div>
                 <div className="space-y-2 mt-2">
                   <div className="bg-gray-200 p-1">OC1</div>
                   <div className="bg-gray-200 p-1">OC3</div>
                 </div>
               </div>
               <div>
-                <div className="bg-yellow-200 p-2 text-center">ROOT CAUSES OF NON-DETECTION</div>
+                <div className="bg-yellow-200 p-2 text-center">
+                  ROOT CAUSES OF NON-DETECTION
+                </div>
                 <div className="space-y-2 mt-2">
                   <div className="bg-gray-200 p-1">ND1</div>
                   <div className="bg-gray-200 p-1">ND3</div>
                 </div>
               </div>
               <div>
-                <div className="bg-green-200 p-2 text-center">SYSTEMIC ROOT CAUSES</div>
+                <div className="bg-green-200 p-2 text-center">
+                  SYSTEMIC ROOT CAUSES
+                </div>
                 <div className="space-y-2 mt-2">
                   <div className="bg-gray-200 p-1">SC1</div>
                   <div className="bg-gray-200 p-1">SC3</div>
@@ -203,14 +277,26 @@ export default function Page171819202122() {
         <CardHeader className="bg-blue-900 text-white">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <Image src={coficabLogo} alt="COFICAB" width={32} height={32} className="object-contain" />
+              <Image
+                src={coficabLogo}
+                alt="COFICAB"
+                width={32}
+                height={32}
+                className="object-contain"
+              />
               <span>5D</span>
             </div>
             <CardTitle>Identify Solutions, Corrective Actions</CardTitle>
             <div className="flex items-center gap-4">
               <Label className="text-white">Issue Date:</Label>
               <Input className="w-32 bg-white" />
-              <Image src={coficabLogo} alt="Home" width={24} height={24} className="object-contain" />
+              <Image
+                src={coficabLogo}
+                alt="Home"
+                width={24}
+                height={24}
+                className="object-contain"
+              />
             </div>
           </div>
         </CardHeader>
@@ -242,37 +328,83 @@ export default function Page171819202122() {
               <TableBody>
                 <TableRow>
                   <TableCell className="bg-blue-100">OC</TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input type="date" /></TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="date" />
+                  </TableCell>
                   <TableCell>0</TableCell>
-                  <TableCell><Input type="number" defaultValue="0" /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
+                  <TableCell>
+                    <Input type="number" defaultValue="0" />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="bg-red-100 border-2 border-red-500">SC</TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input type="date" /></TableCell>
+                  <TableCell className="bg-red-100 border-2 border-red-500">
+                    SC
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="date" />
+                  </TableCell>
                   <TableCell>0</TableCell>
-                  <TableCell><Input type="number" defaultValue="0" /></TableCell>
-                  <TableCell><Input /></TableCell>
-                  <TableCell><Input /></TableCell>
+                  <TableCell>
+                    <Input type="number" defaultValue="0" />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
+                  <TableCell>
+                    <Input />
+                  </TableCell>
                 </TableRow>
                 {Array.from({ length: 9 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input type="date" /></TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input type="date" />
+                    </TableCell>
                     <TableCell>0</TableCell>
-                    <TableCell><Input type="number" defaultValue="0" /></TableCell>
-                    <TableCell><Input /></TableCell>
-                    <TableCell><Input /></TableCell>
+                    <TableCell>
+                      <Input type="number" defaultValue="0" />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
+                    <TableCell>
+                      <Input />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -304,14 +436,26 @@ export default function Page171819202122() {
         <CardHeader className="bg-blue-900 text-white">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <Image src={coficabLogo} alt="COFICAB" width={32} height={32} className="object-contain" />
+              <Image
+                src={coficabLogo}
+                alt="COFICAB"
+                width={32}
+                height={32}
+                className="object-contain"
+              />
               <span>8D+1</span>
             </div>
             <CardTitle>Suspect Spools Follow-up & NQ Cost</CardTitle>
             <div className="flex items-center gap-4">
               <Label className="text-white">Issue Date:</Label>
               <Input className="w-32 bg-white" />
-              <Image src={coficabLogo} alt="Home" width={24} height={24} className="object-contain" />
+              <Image
+                src={coficabLogo}
+                alt="Home"
+                width={24}
+                height={24}
+                className="object-contain"
+              />
             </div>
           </div>
         </CardHeader>
@@ -450,7 +594,9 @@ export default function Page171819202122() {
               </div>
 
               <div className="mt-4 bg-red-100 p-2">
-                <div className="text-center font-bold">Total Non Quality Cost</div>
+                <div className="text-center font-bold">
+                  Total Non Quality Cost
+                </div>
                 <div className="text-center text-2xl font-bold">1 000.00 €</div>
               </div>
             </div>
@@ -477,5 +623,5 @@ export default function Page171819202122() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

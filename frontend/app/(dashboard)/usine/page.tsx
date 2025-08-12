@@ -5,8 +5,6 @@ import { useEffect, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -35,7 +33,7 @@ function transformApiResultToKpi(result) {
       bobinesIncompletes: result.bobinesIncompletes ?? 0,
       ftq: result.ftq,
       productionRate: result.tauxProduction ?? 0,
-      tauxRejets: result.rejectRate ?? 0,
+      tauxRejets: result.tauxderejets ?? 0,
       productionCible: result.targetProduction ?? 0,
     },
     files: [
@@ -52,10 +50,29 @@ function transformApiResultToKpi(result) {
   };
 }
 
+const getWeekDates = (endDate = new Date()) => {
+  const weekDates = [];
+
+  for (let offset = 0; offset < 7; ++offset) {
+    const date = new Date(endDate);
+    date.setDate(endDate.getDate() - offset);
+    weekDates.push(date);
+  }
+
+  return weekDates.reverse();
+};
+
 export default function Page() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [kpiStats, setKpiStats] = useState({
+    date: getWeekDates(),
+    produitsNonConformes: new Array(7).fill(0),
+    rejectRate: new Array(7).fill(0),
+    produitsConformes: new Array(7).fill(0),
+    ftq: new Array(7).fill(0),
+  });
   const [kpiData, setKpiData] = useState<any>({
     summary: {
       produitsConformes: 0,
@@ -79,10 +96,56 @@ export default function Page() {
     isOpen: false,
   });
 
+  const handleUploadSuccess = (result: any) => {
+    // extract only the keys "ligne_1", "ligne_2", … in numeric order
+    const extracted = Object.entries(result)
+      .filter(([k]) => k.startsWith("ligne_"))
+      .sort(
+        ([a], [b]) =>
+          parseInt(a.split("_")[1], 10) - parseInt(b.split("_")[1], 10)
+      )
+      .map(([key, data]) => ({ key, data }));
+
+    if (!extracted.length) return;
+    // seed the rotation
+    setLinesData(extracted);
+    setCurrentLineIndex(0);
+    console.log("setting kpi data summary");
+    console.log(transformApiResultToKpi(extracted[0].data));
+    setKpiData(transformApiResultToKpi(extracted[0].data));
+    setError(null);
+  };
   // Fonction pour formater la date en chaîne YYYY-MM-DD pour l'API
   const formatDateForApi = (date: Date) => {
     return date.toISOString().split("T")[0];
   };
+  // ––––– NEW: rotation logic –––––
+  // holds all the { key: "ligne_1", data: … } entries
+  const [linesData, setLinesData] = useState<{ key: string; data: any }[]>([]);
+  const [linesStats, setLinesStats] = useState<{ key: string; data: any }[]>(
+    []
+  );
+  // which index (0‑based) is currently on screen
+  const [currentLineIndex, setCurrentLineIndex] = useState(0);
+  const fetchLinesStats = async () => {
+    const reqResult = await fetch(
+      `/api/uploads/weekly?startDate=${kpiStats.date[0]}&endDate=${kpiStats.date[6]}`,
+      { method: "GET" }
+    );
+    const result = await reqResult.json();
+    const extracted = Object.entries(result)
+      .filter(([k]) => k.startsWith("ligne_"))
+      .sort(
+        ([a], [b]) =>
+          parseInt(a.split("_")[1], 10) - parseInt(b.split("_")[1], 10)
+      )
+      .map(([key, data]) => ({ key, data }));
+    console.log(result);
+    setLinesStats(extracted);
+  };
+  useEffect(() => {
+    fetchLinesStats();
+  }, []);
 
   // Charger les données KPI
   useEffect(() => {
@@ -90,8 +153,16 @@ export default function Page() {
       setLoading(true);
       setError(null);
       try {
+        const d = new Date();
+        selectedDate.setHours(
+          d.getHours(),
+          d.getMinutes(),
+          d.getSeconds(),
+          d.getMilliseconds()
+        );
+        console.log(selectedDate, selectedDate.toUTCString());
         const response = await fetch(
-          `/api/getOneFile?date=${formatDateForApi(selectedDate)}`
+          `/api/uploads?date=${selectedDate.toUTCString()}`
         );
 
         if (!response.ok) {
@@ -99,10 +170,27 @@ export default function Page() {
         }
 
         const data = await response.json();
-        setKpiData((kpiData) => ({
-          ...kpiData,
-          ...transformApiResultToKpi(data),
-        }));
+        if (!Array.isArray(data) || !data.length) {
+          setError("Aucune donnée disponible pour la date sélectionnée");
+          return;
+        }
+        const record = data[0];
+        console.log(data, " inside fetchKpiData in useEffect");
+        console.log(record.produitConformes + record.produitNonConformes);
+        handleUploadSuccess(record);
+        // setKpiData((kpiData) => ({
+        //   ...kpiData,
+        //   summary: {
+        //     produitsConformes: record.produitsConformes,
+        //     produitsNonConformes: record.produitsNonConformes,
+        //     bobinesIncompletes: record.bobineIncompletes,
+        //     ftq: record.ftq,
+        //     tauxProduction: record.tauxProduction,
+        //     tauxRejets: record.tauxderejets,
+        //     productionCible:
+        //       record.produitsConformes + record.produitsNonConformes,
+        //   },
+        // }));
       } catch (err) {
         console.error("Error fetching KPI data:", err);
         setError(
@@ -113,8 +201,12 @@ export default function Page() {
       }
     };
 
+    //TODO: implement onload fetch kpi stats
+    fetchLinesStats();
+
     fetchKpiData();
   }, [selectedDate]);
+
   const [fileName, setFileName] = useState<string | null>(null);
   const initialKpis = {
     ftq: 85.3,
@@ -220,11 +312,36 @@ export default function Page() {
     setModalContent((prev) => ({ ...prev, isOpen: false }));
   };
 
+  useEffect(() => {
+    if (linesData.length <= 1) return;
+    const iv = setInterval(() => {
+      setCurrentLineIndex((i) => (i + 1) % linesData.length);
+    }, 15000);
+    return () => clearInterval(iv);
+  }, [linesData]);
+
+  // whenever we switch index, re-run transformApiResultToKpi
+  useEffect(() => {
+    if (!linesData.length) return;
+    let { data } = linesData[currentLineIndex];
+    setKpiData(transformApiResultToKpi(data));
+    if (linesStats && linesStats.length > currentLineIndex) {
+      data = linesStats[currentLineIndex]["data"];
+      console.log(data, "hereeee");
+      setKpiStats(data);
+    }
+  }, [currentLineIndex, linesData]);
+
   return (
     <div className="p-6 space-y-10 max-w-7xl mx-auto bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-extrabold text-center mb-8 text-indigo-700 select-none">
         Production de l'Usine
       </h1>
+      {linesData.length > 0 && (
+        <h2 className="text-xl text-center text-gray-600 mb-6">
+          Affichage : {linesData[currentLineIndex].key}
+        </h2>
+      )}
       <motion.div
         className="flex flex-col md:flex-row items-center justify-between gap-6"
         variants={containerVariants}
@@ -234,31 +351,7 @@ export default function Page() {
         <UploadButton
           className="w-full md:w-auto"
           date={selectedDate}
-          onUploadSuccess={(result) => {
-            console.log(result);
-            setKpiData((kpiData) => ({
-              ...kpiData,
-              ...transformApiResultToKpi(result),
-            }));
-            setError(null);
-
-            // Rafraîchir les données après l'upload
-            // const fetchNewData = async () => {
-            //   setLoading(true);
-            //   try {
-            //     const response = await fetch(`/api/kpi?date=${formatDateForApi(selectedDate)}`);
-            //     if (response.ok) {
-            //       const newData = await response.json();
-            //       setKpiData(newData);
-            //     }
-            //   } catch (err) {
-            //     console.error('Error refreshing data:', err);
-            //   } finally {
-            //     setLoading(false);
-            //   }
-            // };
-            // fetchNewData();
-          }}
+          onUploadSuccess={handleUploadSuccess}
         />
 
         <motion.div
@@ -386,7 +479,7 @@ export default function Page() {
               FTQ (First Time Quality)
             </h3>
             <p className="text-4xl font-extrabold text-gray-900">
-              {kpiData.summary.ftq.toFixed(1)}%
+              {kpiData.summary.ftq?.toFixed(1)}%
             </p>
             <p
               className={`mt-3 text-sm font-semibold ${
@@ -512,7 +605,7 @@ export default function Page() {
               >
                 <div className="mb-6">
                   <h3 className="text-xl font-bold text-indigo-700 mb-2">
-                    Volume de Production Quotidien
+                    Produits Conformes
                   </h3>
                   <p className="text-sm text-gray-500">
                     Répartition des produits sur 7 jours
@@ -521,25 +614,15 @@ export default function Page() {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={kpiData.chartData.map((item: any) => ({
-                        jour: new Date(item.date).toLocaleDateString("fr-FR", {
-                          weekday: "short",
-                          day: "2-digit",
-                          month: "2-digit",
-                        }),
-                        conformes: item.produitsConformes,
-                        nonConformes: item.produitsNonConformes,
-                        bobinesIncompletes: item.bobinesIncompletes,
-                        total:
-                          item.produitsConformes +
-                          item.produitsNonConformes +
-                          item.bobinesIncompletes,
+                      data={kpiStats.date.map((date, index) => ({
+                        date,
+                        value: kpiStats.produitsConformes[index],
                       }))}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="jour" stroke="#64748b" fontSize={11} />
-                      <YAxis stroke="#64748b" fontSize={11} />
+                      <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
+                      <YAxis stroke="#64748b" dataKey="value" fontSize={11} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "#ffffff",
@@ -547,35 +630,13 @@ export default function Page() {
                           border: "1px solid #e2e8f0",
                           boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
                         }}
-                        formatter={(value: any, name: any) => {
-                          const labels: any = {
-                            conformes: "Produits Conformes",
-                            nonConformes: "Produits Non Conformes",
-                            bobinesIncompletes: "Bobines Incomplètes",
-                          };
-                          return [`${value} unités`, labels[name] || name];
-                        }}
                       />
                       <Bar
-                        dataKey="conformes"
+                        dataKey="value"
                         stackId="a"
                         name="conformes"
                         fill="#10b981"
                         radius={[0, 0, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="nonConformes"
-                        stackId="a"
-                        name="nonConformes"
-                        fill="#ef4444"
-                        radius={[0, 0, 0, 0]}
-                      />
-                      <Bar
-                        dataKey="bobinesIncompletes"
-                        stackId="a"
-                        name="bobinesIncompletes"
-                        fill="#f59e0b"
-                        radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -591,7 +652,7 @@ export default function Page() {
               >
                 <div className="mb-6">
                   <h3 className="text-xl font-bold text-indigo-700 mb-2">
-                    Évolution des KPI de Performance
+                    Produits Non Conformes
                   </h3>
                   <p className="text-sm text-gray-500">
                     Tendances des indicateurs clés (%)
@@ -600,19 +661,14 @@ export default function Page() {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                      data={kpiData.chartData.map((item: any) => ({
-                        jour: new Date(item.date).toLocaleDateString("fr-FR", {
-                          weekday: "short",
-                          day: "2-digit",
-                        }),
-                        ftq: item.ftq,
-                        tauxProduction: item.tauxProduction,
-                        productionCible: item.productionCible,
+                      data={kpiStats.date.map((date, index) => ({
+                        date,
+                        value: kpiStats.produitsNonConformes[index],
                       }))}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="jour" stroke="#64748b" fontSize={11} />
+                      <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
                       <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
                       <Tooltip
                         contentStyle={{
@@ -621,31 +677,11 @@ export default function Page() {
                           border: "1px solid #e2e8f0",
                           boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
                         }}
-                        formatter={(value: any, name: any) => {
-                          const labels: any = {
-                            ftq: "FTQ",
-                            tauxProduction: "Taux de Production",
-                            productionCible: "Production Cible",
-                          };
-                          return [
-                            `${parseFloat(value).toFixed(1)}%`,
-                            labels[name],
-                          ];
-                        }}
                       />
-                      {/* Ligne de seuil FTQ */}
+
                       <Line
                         type="monotone"
-                        dataKey={() => seuils.ftq}
-                        stroke="#94a3b8"
-                        strokeDasharray="5 5"
-                        strokeWidth={1}
-                        dot={false}
-                        name="Seuil FTQ"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="ftq"
+                        dataKey="value"
                         stroke="#6366f1"
                         strokeWidth={3}
                         dot={{ r: 4, fill: "#6366f1" }}
@@ -655,35 +691,7 @@ export default function Page() {
                           stroke: "#ffffff",
                           strokeWidth: 2,
                         }}
-                        name="ftq"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="tauxProduction"
-                        stroke="#10b981"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: "#10b981" }}
-                        activeDot={{
-                          r: 6,
-                          fill: "#10b981",
-                          stroke: "#ffffff",
-                          strokeWidth: 2,
-                        }}
-                        name="tauxProduction"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="productionCible"
-                        stroke="#f59e0b"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: "#f59e0b" }}
-                        activeDot={{
-                          r: 6,
-                          fill: "#f59e0b",
-                          stroke: "#ffffff",
-                          strokeWidth: 2,
-                        }}
-                        name="productionCible"
+                        name="non-conformes"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -699,7 +707,7 @@ export default function Page() {
               >
                 <div className="mb-6">
                   <h3 className="text-xl font-bold text-indigo-700 mb-2">
-                    Analyse Qualité
+                    Taux de rejets
                   </h3>
                   <p className="text-sm text-gray-500">
                     Taux de rejets vs seuil critique
@@ -707,58 +715,17 @@ export default function Page() {
                 </div>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={kpiData.chartData.map((item: any) => ({
-                        jour: new Date(item.date).toLocaleDateString("fr-FR", {
-                          weekday: "short",
-                          day: "2-digit",
-                        }),
-                        tauxRejets: item.tauxRejets,
-                        seuilCritique: seuils.tauxRejets,
-                        conformite: 100 - item.tauxRejets,
+                    <LineChart
+                      data={kpiStats.date.map((date, index) => ({
+                        date,
+                        value: kpiStats?.tauxderejets
+                          ? kpiStats?.tauxderejets[index]
+                          : 0,
                       }))}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
-                      <defs>
-                        <linearGradient
-                          id="colorRejets"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="#ef4444"
-                            stopOpacity={0.8}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#ef4444"
-                            stopOpacity={0.1}
-                          />
-                        </linearGradient>
-                        <linearGradient
-                          id="colorConformite"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="#10b981"
-                            stopOpacity={0.8}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#10b981"
-                            stopOpacity={0.1}
-                          />
-                        </linearGradient>
-                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="jour" stroke="#64748b" fontSize={11} />
+                      <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
                       <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
                       <Tooltip
                         contentStyle={{
@@ -767,46 +734,23 @@ export default function Page() {
                           border: "1px solid #e2e8f0",
                           boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
                         }}
-                        formatter={(value: any, name: any) => {
-                          const labels: any = {
-                            tauxRejets: "Taux de Rejets",
-                            conformite: "Taux de Conformité",
-                            seuilCritique: "Seuil Critique",
-                          };
-                          return [
-                            `${parseFloat(value).toFixed(1)}%`,
-                            labels[name],
-                          ];
-                        }}
                       />
-                      {/* Zone de conformité */}
-                      <Area
-                        type="monotone"
-                        dataKey="conformite"
-                        stackId="1"
-                        stroke="#10b981"
-                        fill="url(#colorConformite)"
-                        name="conformite"
-                      />
-                      {/* Zone de rejets */}
-                      <Area
-                        type="monotone"
-                        dataKey="tauxRejets"
-                        stroke="#ef4444"
-                        fill="url(#colorRejets)"
-                        name="tauxRejets"
-                      />
-                      {/* Ligne de seuil critique */}
+
                       <Line
                         type="monotone"
-                        dataKey="seuilCritique"
-                        stroke="#dc2626"
-                        strokeDasharray="8 4"
-                        strokeWidth={2}
-                        dot={false}
-                        name="seuilCritique"
+                        dataKey="value"
+                        stroke="#6366f1"
+                        strokeWidth={3}
+                        dot={{ r: 4, fill: "#6366f1" }}
+                        activeDot={{
+                          r: 6,
+                          fill: "#6366f1",
+                          stroke: "#ffffff",
+                          strokeWidth: 2,
+                        }}
+                        name="non-conformes"
                       />
-                    </AreaChart>
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
               </motion.div>
@@ -820,40 +764,22 @@ export default function Page() {
               >
                 <div className="mb-6">
                   <h3 className="text-xl font-bold text-indigo-700 mb-2">
-                    Efficacité de Production
+                    FTQ
                   </h3>
-                  <p className="text-sm text-gray-500">
-                    Performance quotidienne vs objectif
-                  </p>
+                  <p className="text-sm text-gray-500">FTQ</p>
                 </div>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={kpiData.chartData.map((item: any) => {
-                        const efficacite =
-                          (item.produitsConformes /
-                            (item.produitsConformes +
-                              item.produitsNonConformes +
-                              item.bobinesIncompletes)) *
-                          100;
-                        return {
-                          jour: new Date(item.date).toLocaleDateString(
-                            "fr-FR",
-                            {
-                              weekday: "short",
-                              day: "2-digit",
-                            }
-                          ),
-                          efficacite: efficacite,
-                          objectif: 95, // Objectif d'efficacité
-                          ecart: efficacite - 95,
-                        };
-                      })}
+                      data={kpiStats.date.map((date, index) => ({
+                        date,
+                        value: kpiStats.ftq ? kpiStats.ftq[index] : 0,
+                      }))}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="jour" stroke="#64748b" fontSize={11} />
-                      <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
+                      <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
+                      <YAxis stroke="#64748b" dataKey="value" fontSize={11} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "#ffffff",
@@ -861,31 +787,13 @@ export default function Page() {
                           border: "1px solid #e2e8f0",
                           boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
                         }}
-                        formatter={(value: any, name: any) => {
-                          const labels: any = {
-                            efficacite: "Efficacité Réelle",
-                            objectif: "Objectif",
-                            ecart: "Écart vs Objectif",
-                          };
-                          return [
-                            `${parseFloat(value).toFixed(1)}%`,
-                            labels[name],
-                          ];
-                        }}
                       />
-                      {/* Barre d'objectif (référence) */}
                       <Bar
-                        dataKey="objectif"
-                        fill="#e2e8f0"
-                        name="objectif"
-                        radius={[4, 4, 4, 4]}
-                      />
-                      {/* Barre d'efficacité réelle */}
-                      <Bar
-                        dataKey="efficacite"
-                        fill="#3b82f6"
-                        name="efficacite"
-                        radius={[4, 4, 4, 4]}
+                        dataKey="value"
+                        stackId="a"
+                        name="conformes"
+                        fill="#10b981"
+                        radius={[0, 0, 0, 0]}
                       />
                     </BarChart>
                   </ResponsiveContainer>

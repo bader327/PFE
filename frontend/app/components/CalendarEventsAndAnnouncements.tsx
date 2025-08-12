@@ -23,7 +23,16 @@ type Announcement = {
 
 type TabType = "events" | "announcements";
 
-export default function CalendarEventsAndAnnouncements() {
+export class CalendarEventsProps {
+  ligneId?: string;
+  isAdmin?: boolean = true;
+  onCalendarDateChange?: (date: Date) => void;
+}
+
+export default function CalendarEventsAndAnnouncements({
+  ligneId,
+  onCalendarDateChange,
+}: CalendarEventsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [events, setEvents] = useState<Event[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -36,12 +45,17 @@ export default function CalendarEventsAndAnnouncements() {
   const [error, setError] = useState<string | null>(null);
 
   const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
-
+  let eventsApi = "/api/events";
+  let announcementsApi = "/api/announcements";
+  if (ligneId) {
+    eventsApi += `?ligneId=${ligneId}`;
+    announcementsApi += `?ligneId=${ligneId}`;
+  }
   const fetchData = async () => {
     try {
       const [eventsResponse, announcementsResponse] = await Promise.all([
-        fetch("/api/events"),
-        fetch("/api/announcements"),
+        fetch(eventsApi),
+        fetch(announcementsApi),
       ]);
 
       if (!eventsResponse.ok || !announcementsResponse.ok) {
@@ -94,6 +108,7 @@ export default function CalendarEventsAndAnnouncements() {
         body: JSON.stringify({
           ...eventForm,
           date: selectedDateStr,
+          ligneId: ligneId,
         }),
       });
 
@@ -124,6 +139,7 @@ export default function CalendarEventsAndAnnouncements() {
           ...announcementForm,
           type: "info",
           date: date,
+          ligneId: ligneId,
         }),
       });
 
@@ -160,6 +176,9 @@ export default function CalendarEventsAndAnnouncements() {
             selected={selectedDate}
             onSelect={(date: Date | undefined) => {
               console.log(date);
+              if (onCalendarDateChange) {
+                onCalendarDateChange(date);
+              }
               date && setSelectedDate(date);
             }}
             className="mx-auto"

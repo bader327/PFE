@@ -1,9 +1,11 @@
 import * as xlsx from "xlsx";
-export async function processExcelFile(fileBuffer: ArrayBuffer) {
+export async function processExcelFile(
+  fileBuffer: ArrayBuffer,
+  isUsine: boolean = false
+) {
   const workbook = xlsx.read(fileBuffer);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const jsonData = xlsx.utils.sheet_to_json(sheet, { defval: "" });
-  console.log("json data length ", jsonData.length);
   // console.log("json ", jsonData);
   const bobinesData = jsonData.map((row: any) => ({
     numero: (row["Serial Number"] as number) || -1,
@@ -19,8 +21,39 @@ export async function processExcelFile(fileBuffer: ArrayBuffer) {
       row["Défault 4"].toLowerCase(),
       row["Défaut 5"].toLowerCase(),
     ],
+    idLigne: row["ID Line"],
   }));
-  console.log("bobines data length ", bobinesData.length);
+
+  const existingLinesInCsvFile = [
+    ...new Set(bobinesData.map((elt) => elt.idLigne)),
+  ];
+  if (existingLinesInCsvFile.length == 1) {
+    return { ...getResultForLigne(bobinesData), bobinesData };
+  }
+
+  const mapper: any = {};
+  const result: any = { bobinesData };
+
+  for (let i = 1; i <= existingLinesInCsvFile.length; ++i) {
+    mapper[existingLinesInCsvFile[i - 1]] = `ligne_${i}`;
+
+    result[`ligne_${i}`] = getResultForLigne(
+      bobinesData.filter((elt) => elt.idLigne == existingLinesInCsvFile[i - 1])
+    );
+  }
+  console.log(result["ligne_1"]);
+  return { ...result, bobinesData };
+}
+
+function checkConditionFPS(defaultsPerBobine: string[][]): boolean {
+  let defaultsCondition = false;
+  for (let i = 0; i < 5 && !defaultsCondition; ++i) {
+    defaultsCondition = defaultsCondition || checkDefault(defaultsPerBobine, i);
+  }
+  return defaultsCondition;
+}
+
+function getResultForLigne(bobinesData) {
   const produitsConformes = bobinesData.filter((b) => b.conforme).length;
   const produitsNonConformes = bobinesData.filter((b) => b.nonConforme).length;
   const bobinesIncompletes = bobinesData.filter((b) => b.incomplete).length;
@@ -56,10 +89,18 @@ export async function processExcelFile(fileBuffer: ArrayBuffer) {
         : [];
 
     const defaultsTypes = firstConditionArray.map((e) => e.defauts);
-    console.log(defaultsTypes);
     const fpsOneDetected = checkConditionFPS(defaultsTypes);
 
-    const fpsInfo = { bobine: filteredBobineData[bobineIndice].numero };
+    const firstNonEmptyDefaut = filteredBobineData[bobineIndice].defauts.reduce(
+      (acc, cur) => {
+        return acc ?? cur;
+      }
+    );
+    console.log(firstNonEmptyDefaut);
+    const fpsInfo = {
+      bobine: filteredBobineData[bobineIndice].numero,
+      defaut: firstNonEmptyDefaut,
+    };
     if (fpsOneDetected) {
       detectedFpsArr.push(fpsInfo);
     }
@@ -72,7 +113,6 @@ export async function processExcelFile(fileBuffer: ArrayBuffer) {
     alertes.push("⚠️ Trop de bobines incomplètes");
   }
   return {
-    bobinesData,
     produitsConformes,
     produitsNonConformes,
     bobinesIncompletes,
@@ -84,15 +124,8 @@ export async function processExcelFile(fileBuffer: ArrayBuffer) {
     tauxderejets,
     productionCible,
     detectedFpsArr,
+    bobinesData,
   };
-}
-
-function checkConditionFPS(defaultsPerBobine: string[][]): boolean {
-  let defaultsCondition = false;
-  for (let i = 0; i < 5 && !defaultsCondition; ++i) {
-    defaultsCondition = defaultsCondition || checkDefault(defaultsPerBobine, i);
-  }
-  return defaultsCondition;
 }
 
 function checkSecondConditionFPS(

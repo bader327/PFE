@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 type Action = {
   description: string;
@@ -74,24 +74,75 @@ const defautsAvecCauses: Record<string, string[]> = {
   ],
 };
 
+const actionsCorrectives: string[] = [
+  "Refuser et stopper la bobine d'alimentation",
+  "Informer le chef d'équipe et l'animateur qualité",
+  "Remplacer la bobine",
+  "Confirmer la recette",
+  "Confirmer les paramètres de températures",
+  "Vérifier l'état du contrôleur de diamètre",
+  "Vérifier le choix de filière",
+  "Vérifier le réglage du débit ou tamis bouché",
+  "Confirmer l'alignement de la tête d'extrusion",
+  "Vérifier la vibration du toron",
+  "Vérifier les interférences électrostatiques",
+  "Vérifier la qualité du toron (brin sortant, pas de torsion)",
+  "Vérifier l'outillage (filière/poinçon usé)",
+  "Vérifier le circuit cuivre jusqu'à la tête",
+  "Vérifier diamètre guide fil",
+  "Vérifier compactage toron",
+  "Confirmer profil de température",
+  "Vérifier le type de claquage",
+  "Vérifier qualité matière isolante",
+  "Vérifier enfilage du fil",
+  "Vérifier dosage de colorant",
+  "Nettoyer les miroirs de contrôle",
+  "Vérifier fonctionnement du sécheur",
+  "Vérifier force d'enroulement",
+  "Vérifier pression de pantin",
+  "Corriger l'étiquette",
+  "Appliquer check-list LPA",
+  "Stopper la bobine et alerter chef",
+];
+
 const inputFieldStyle =
   "w-[450px] p-2 h-10 border rounded-md text-sm bg-gray-50";
 
 const NiveauLignePage = () => {
   const router = useRouter();
-  const [loading, setLoading] = useState<boolean>(false);
+  const searchParams = useSearchParams();
+
+  // Récupération de tous les paramètres de bobines et défauts
+  const bobinesFromUrl = searchParams.getAll("bobine");
+  const defautsFromUrl = searchParams.getAll("defaut");
+
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<number, string>>({});
 
-  const [rows, setRows] = useState<Row[]>([
-    {
-      operateur: "",
-      defaut: "",
-      produit: "",
-      bobine: "",
-      cause: "",
-      actions: [{ description: "", resolu: false }],
-    },
-  ]);
+  // Création des lignes initiales avec toutes les bobines détectées
+  const initialRows = bobinesFromUrl.map((bobine, index) => ({
+    operateur: "",
+    defaut: defautsFromUrl[index] || "",
+    produit: "",
+    bobine: bobine || "",
+    cause: "",
+    actions: [{ description: "", resolu: false }],
+  }));
+
+  const [rows, setRows] = useState<Row[]>(
+    initialRows.length > 0
+      ? initialRows
+      : [
+          {
+            operateur: "",
+            defaut: "",
+            produit: "",
+            bobine: "",
+            cause: "",
+            actions: [{ description: "", resolu: false }],
+          },
+        ]
+  );
 
   const validateRow = (row: Row): string | null => {
     if (!row.operateur) return "Le nom de l'opérateur est requis";
@@ -99,7 +150,7 @@ const NiveauLignePage = () => {
     if (!row.produit) return "Le produit est requis";
     if (!row.bobine) return "Le numéro de bobine est requis";
     if (!row.cause) return "La cause est requise";
-    if (!row.actions.some(action => action.description)) {
+    if (!row.actions.some((action) => action.description)) {
       return "Au moins une action est requise";
     }
     return null;
@@ -114,8 +165,7 @@ const NiveauLignePage = () => {
     newRows[rowIndex][field] = value;
     if (field === "defaut") newRows[rowIndex].cause = "";
     setRows(newRows);
-    
-    // Clear error when user starts typing
+
     if (errors[rowIndex]) {
       const newErrors = { ...errors };
       delete newErrors[rowIndex];
@@ -176,16 +226,13 @@ const NiveauLignePage = () => {
     try {
       const res = await fetch("/api/fps1", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dataToSend),
       });
 
       const result: ApiResponse = await res.json();
       if (result.success) {
         alert("✅ Données enregistrées !");
-        // Clear the row after successful save
         const newRows = [...rows];
         newRows[rowIndex] = {
           operateur: "",
@@ -201,47 +248,104 @@ const NiveauLignePage = () => {
       }
     } catch (err) {
       console.error("Erreur lors de la sauvegarde :", err);
-      alert("❌ Erreur lors de la communication avec le serveur. Veuillez réessayer.");
+      alert("❌ Erreur de communication avec le serveur.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePasserAuFPS = () => {
-    // Check for unsaved changes
-    const hasUnsavedChanges = rows.some(row => 
-      row.operateur || row.defaut || row.produit || row.bobine || row.cause ||
-      row.actions.some(action => action.description)
+  const handlePasserAuFPS = async () => {
+    const rowToSend = rows.find(
+      (row) =>
+        row.operateur ||
+        row.defaut ||
+        row.produit ||
+        row.bobine ||
+        row.cause ||
+        row.actions.some((action) => action.description)
     );
 
-    if (hasUnsavedChanges) {
-      if (window.confirm("Des modifications non enregistrées seront perdues. Voulez-vous continuer ?")) {
-        router.push("/niveau1");
-      }
-    } else {
+    if (!rowToSend) {
       router.push("/niveau1");
+      return;
+    }
+
+    const confirm = window.confirm(
+      "Des données vont être envoyées au responsable. Continuer ?"
+    );
+    if (!confirm) return;
+
+    try {
+      const res = await fetch("/api/send-fps-alerte", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operateur: rowToSend.operateur,
+          defaut: rowToSend.defaut,
+          produit: rowToSend.produit,
+          numeroBobine: rowToSend.bobine,
+          cause: rowToSend.cause,
+          actions: rowToSend.actions,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        alert("📩 Email envoyé avec succès !");
+        router.push("/niveau1");
+      } else {
+        alert("❌ Erreur lors de l'envoi : " + result.error);
+      }
+    } catch (error) {
+      console.error("Erreur email :", error);
+      alert("❌ Une erreur est survenue.");
     }
   };
 
   return (
-    <div className="p-10 bg-gray-100 min-h-screen text-base max-w-7xl mx-auto">
+    <div className="p-10 bg-gray-100 min-h-screen max-w-7xl mx-auto">
+      <datalist id="defautsList">
+        {Object.keys(defautsAvecCauses).map((d) => (
+          <option key={d} value={d} />
+        ))}
+      </datalist>
+      <datalist id="actionsList">
+        {actionsCorrectives.map((a) => (
+          <option key={a} value={a} />
+        ))}
+      </datalist>
       <h1 className="text-3xl font-bold text-center mb-10">
         Suivi des Défauts - Niveau 1
       </h1>
 
+      {bobinesFromUrl.length > 0 && (
+        <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded">
+          <p className="font-bold mb-2">Bobines détectées automatiquement :</p>
+          <ul className="list-disc pl-5">
+            {bobinesFromUrl.map((bobine, index) => (
+              <li key={index}>
+                Bobine #{bobine}
+                {defautsFromUrl[index] && ` - Défaut: ${defautsFromUrl[index]}`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white shadow-md rounded-xl text-base w-full">
           <thead>
-            <tr className="bg-blue-900 text-white">
-              <th colSpan={6} className="text-center p-3 text-base">
+            <tr className="bg-blue-900 text-white text-center">
+              <th colSpan={6} className="p-3">
                 Suivi des défauts
               </th>
-              <th className="text-center p-3 text-base">Actions Correctives</th>
-              <th className="text-center p-3 text-base">Valider</th>
-              <th className="text-center p-3 text-base">FPS</th>
+              <th className="p-3">Actions Correctives</th>
+              <th className="p-3">Valider</th>
+              <th className="p-3">FPS</th>
             </tr>
-            <tr className="bg-blue-100 text-gray-800">
-              <th className="p-3 border">Nom opérateur*</th>
+            <tr className="bg-blue-100 text-gray-800 text-center">
+              <th className="p-3 border">Opérateur*</th>
               <th className="p-3 border">Défaut*</th>
               <th className="p-3 border">Produit*</th>
               <th className="p-3 border">N° bobine*</th>
@@ -254,75 +358,66 @@ const NiveauLignePage = () => {
           </thead>
           <tbody>
             {rows.map((row, rowIndex) => (
-              <tr key={rowIndex} className="hover:bg-gray-100 align-top">
+              <tr key={rowIndex} className="align-top">
                 <td className="p-2 border">
                   <input
+                    className={inputFieldStyle}
                     value={row.operateur}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "operateur", e.target.value)
                     }
-                    className={`${inputFieldStyle} ${!row.operateur && errors[rowIndex] ? 'border-red-500' : ''}`}
-                    placeholder="Nom opérateur"
                   />
                 </td>
                 <td className="p-2 border">
-                  <select
+                  <input
+                    list="defautsList"
+                    className={inputFieldStyle}
                     value={row.defaut}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "defaut", e.target.value)
                     }
-                    className={`${inputFieldStyle} ${!row.defaut && errors[rowIndex] ? 'border-red-500' : ''}`}
-                  >
-                    <option value="">-- Sélectionner un défaut --</option>
-                    {Object.keys(defautsAvecCauses).map((defaut) => (
-                      <option key={defaut} value={defaut}>
-                        {defaut}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </td>
                 <td className="p-2 border">
                   <input
+                    className={inputFieldStyle}
                     value={row.produit}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "produit", e.target.value)
                     }
-                    className={`${inputFieldStyle} ${!row.produit && errors[rowIndex] ? 'border-red-500' : ''}`}
-                    placeholder="Produit"
                   />
                 </td>
                 <td className="p-2 border">
                   <input
+                    className={inputFieldStyle}
                     value={row.bobine}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "bobine", e.target.value)
                     }
-                    className={`${inputFieldStyle} ${!row.bobine && errors[rowIndex] ? 'border-red-500' : ''}`}
-                    placeholder="N° bobine"
                   />
                 </td>
                 <td className="p-2 border">
-                  <select
+                  <input
+                    list="causesList"
+                    className={inputFieldStyle}
                     value={row.cause}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "cause", e.target.value)
                     }
-                    className={`${inputFieldStyle} ${!row.cause && errors[rowIndex] ? 'border-red-500' : ''}`}
-                    disabled={!row.defaut}
-                  >
-                    <option value="">-- Sélectionner une cause --</option>
-                    {defautsAvecCauses[row.defaut]?.map((cause) => (
-                      <option key={cause} value={cause}>
-                        {cause}
-                      </option>
+                  />
+                  <datalist id="causesList">
+                    {(defautsAvecCauses[row.defaut] || []).map((cause) => (
+                      <option key={cause} value={cause} />
                     ))}
-                  </select>
+                  </datalist>
                 </td>
-                <td className="p-2 border text-center text-gray-400">--</td>
+                <td className="p-2 border text-gray-400 text-center">--</td>
                 <td className="p-2 border">
                   {row.actions.map((action, actionIndex) => (
-                    <div key={actionIndex} className="mb-2">
+                    <div key={actionIndex}>
                       <input
+                        list="actionsList"
+                        className={inputFieldStyle}
                         value={action.description}
                         onChange={(e) =>
                           handleActionChange(
@@ -332,12 +427,8 @@ const NiveauLignePage = () => {
                             e.target.value
                           )
                         }
-                        placeholder={`Action ${actionIndex + 1}`}
-                        className={`${inputFieldStyle} mb-1 ${
-                          !row.actions.some(a => a.description) && errors[rowIndex] ? 'border-red-500' : ''
-                        }`}
                       />
-                      <label className="text-sm flex items-center gap-2">
+                      <label className="flex items-center gap-2 text-sm mt-1">
                         <input
                           type="checkbox"
                           checked={action.resolu}
@@ -349,42 +440,33 @@ const NiveauLignePage = () => {
                               e.target.checked
                             )
                           }
-                          className="h-4 w-4"
                         />
-                        Résolu ?
+                        Résolu et fermer FPS ?
                       </label>
                     </div>
                   ))}
                   <button
                     onClick={() => addAction(rowIndex)}
-                    className="text-blue-600 mt-1 hover:underline text-sm"
+                    className="text-blue-600 hover:underline text-sm mt-2"
                   >
                     + Ajouter une action
                   </button>
                 </td>
                 <td className="p-2 border text-center">
-                  {errors[rowIndex] && (
-                    <div className="text-red-500 text-xs mb-2">{errors[rowIndex]}</div>
-                  )}
                   <button
                     onClick={() => handleSave(rowIndex)}
+                    className="bg-green-600 text-white px-4 py-2 rounded shadow text-sm"
                     disabled={loading}
-                    className={`${
-                      loading
-                        ? 'bg-gray-400'
-                        : 'bg-green-600 hover:bg-green-700'
-                    } text-white px-4 py-2 rounded-md shadow text-sm transition-colors`}
                   >
-                    {loading ? 'Enregistrement...' : 'Enregistrer'}
+                    {loading ? "..." : "Enregistrer"}
                   </button>
                 </td>
                 <td className="p-2 border text-center">
                   <button
                     onClick={handlePasserAuFPS}
-                    disabled={loading}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md shadow text-sm"
+                    className="bg-red-600 text-white px-4 py-2 rounded shadow text-sm"
                   >
-                    FPS Niveau 1
+                    FPS
                   </button>
                 </td>
               </tr>
@@ -392,19 +474,13 @@ const NiveauLignePage = () => {
           </tbody>
         </table>
       </div>
-
-      <div className="mt-6 flex justify-center">
+      <div className="text-center mt-6">
         <button
           onClick={addRow}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-xl shadow-lg text-base"
+          className="bg-blue-600 text-white px-6 py-2 rounded-xl shadow"
         >
           + Ajouter une ligne
         </button>
-      </div>
-
-      <div className="mt-4 text-center text-sm text-gray-500">
-        * Champs obligatoires
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { MongoClient, ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
+import { connectToDatabase } from "../../lib/setupDB";
 
 // Use connection string from .env file
 const uri =
@@ -14,10 +15,8 @@ interface Announcement {
 }
 
 export async function GET(req: Request) {
-  const client = new MongoClient(uri);
   try {
-    await client.connect();
-    const db = client.db();
+    const db = await connectToDatabase();
 
     // Parse query parameters
     const { searchParams } = new URL(req.url);
@@ -25,9 +24,8 @@ export async function GET(req: Request) {
 
     // Build filter based on ligneId
     const filter: any = {};
-    if (ligneId) {
-      filter.ligneId = ligneId;
-    }
+
+    filter.ligneId = ligneId ?? null;
 
     const announcements = await db
       .collection("Announcement")
@@ -42,15 +40,13 @@ export async function GET(req: Request) {
       { error: "Failed to fetch announcements" },
       { status: 500 }
     );
-  } finally {
-    await client.close();
   }
 }
 
 export async function POST(req: Request) {
   const client = new MongoClient(uri);
   try {
-    const { title, content, type, date } = await req.json();
+    const { title, content, type, date, ligneId } = await req.json();
 
     if (!title || !content || !type || !date) {
       return NextResponse.json(
@@ -69,6 +65,7 @@ export async function POST(req: Request) {
       content,
       type,
       date: formattedDate,
+      ligneId: ligneId ?? null,
     };
 
     await db.collection("Announcement").insertOne(announcement);
@@ -86,8 +83,8 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const client = new MongoClient(uri);
   try {
+    const db = await connectToDatabase();
     const { id, title, content, type } = await req.json();
 
     if (!id || !title || !content || !type) {
@@ -96,9 +93,6 @@ export async function PUT(req: Request) {
         { status: 400 }
       );
     }
-
-    await client.connect();
-    const db = client.db();
 
     const result = await db.collection("Announcement").updateOne(
       { _id: new ObjectId(id) },
@@ -125,13 +119,10 @@ export async function PUT(req: Request) {
       { error: "Failed to update announcement" },
       { status: 500 }
     );
-  } finally {
-    await client.close();
   }
 }
 
 export async function DELETE(req: Request) {
-  const client = new MongoClient(uri);
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -139,9 +130,7 @@ export async function DELETE(req: Request) {
     if (!id) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
-
-    await client.connect();
-    const db = client.db();
+    const db = await connectToDatabase();
 
     const result = await db.collection("Announcement").deleteOne({
       _id: new ObjectId(id),
@@ -161,7 +150,5 @@ export async function DELETE(req: Request) {
       { error: "Failed to delete announcement" },
       { status: 500 }
     );
-  } finally {
-    await client.close();
   }
 }
