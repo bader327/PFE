@@ -1,7 +1,6 @@
-import { normalizeRole } from "@/lib/roleUtils";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import mongoose, { Schema, model, models } from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthUser } from "../../../lib/auth";
 
 // ─── Connexion MongoDB ──────────────────────────────────────────────────────────
 const MONGODB_URI = process.env.MONGODB_URI!;
@@ -55,22 +54,22 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const user = await currentUser();
-  const role = normalizeRole((user?.publicMetadata as any)?.userType || (user?.unsafeMetadata as any)?.userType);
-  if (role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const user = await getAuthUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  
+  const role = user.role;
+  if (role !== "CHEF_ATELIER" && role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
   const created = await FpsRecord.create(body);
   return NextResponse.json(created, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const user = await currentUser();
-  const role = normalizeRole((user?.publicMetadata as any)?.userType || (user?.unsafeMetadata as any)?.userType);
-  if (role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const user = await getAuthUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  
+  const role = user.role;
+  if (role !== "CHEF_ATELIER" && role !== "SUPERADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
   if (!body._id)
     return NextResponse.json({ error: "_id manquant" }, { status: 400 });

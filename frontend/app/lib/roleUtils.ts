@@ -1,16 +1,12 @@
-import { User } from "@clerk/nextjs/server";
-
-export type Role = "SUPERADMIN" | "QUALITICIEN" | "CHEF_ATELIER" | "UNKNOWN";
+// Our app defines roles in the Prisma schema, importing here for TypeScript support
+import { Role } from "@prisma/client";
 
 export function normalizeRole(value: unknown): Role {
   const r = (value ?? "").toString().toUpperCase();
-  if (r === "SUPERADMIN" || r === "QUALITICIEN" || r === "CHEF_ATELIER") return r;
-  return "UNKNOWN";
-}
-
-export function getUserRoleFromUser(user: Pick<User, "publicMetadata" | "unsafeMetadata"> | null | undefined): Role {
-  const meta = (user?.publicMetadata as Record<string, unknown>) || (user?.unsafeMetadata as Record<string, unknown>) || {};
-  return normalizeRole(meta.userType);
+  if (r === "SUPERADMIN" || r === "QUALITICIEN" || r === "CHEF_ATELIER" || r === "NORMAL_USER") {
+    return r as Role;
+  }
+  return "NORMAL_USER" as Role;
 }
 
 export function getRedirectForRole(role: Role): string {
@@ -20,6 +16,8 @@ export function getRedirectForRole(role: Role): string {
     case "QUALITICIEN":
       return "/niveauligne";
     case "CHEF_ATELIER":
+      return "/dashboard";
+    case "NORMAL_USER":
       return "/dashboard";
     default:
       return "/";

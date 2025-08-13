@@ -1,9 +1,8 @@
 "use client";
 
-import { getUserRoleFromUser } from "@/lib/roleUtils";
-import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "../../../lib/auth-hooks";
 
 type Action = {
   description: string;
@@ -113,13 +112,12 @@ const inputFieldStyle =
 const NiveauLignePage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isLoaded } = useUser();
-  const userRole = getUserRoleFromUser(user);
-
-  const isLoadingUser = !isLoaded;
-  const isQualiticien = userRole === "QUALITICIEN";
-  const isChefAtelier = userRole === "CHEF_ATELIER";
-  const isSuperAdmin = userRole === "SUPERADMIN";
+  const { user, loading: authLoading } = useAuth();
+  const isLoadingUser = authLoading;
+  const isQualiticien = user?.role === "QUALITICIEN";
+  const isChefAtelier = user?.role === "CHEF_ATELIER";
+  const isSuperAdmin = user?.role === "SUPERADMIN";
+  
   // Controls
   const disableText = isLoadingUser || isQualiticien || isChefAtelier; // QUALITICIEN & CHEF_ATELIER cannot edit text inputs
   const disableCheckbox = isLoadingUser || isChefAtelier; // CHEF_ATELIER cannot toggle checkbox; QUALITICIEN can
@@ -129,7 +127,7 @@ const NiveauLignePage = () => {
   const bobinesFromUrl = searchParams.getAll("bobine");
   const defautsFromUrl = searchParams.getAll("defaut");
 
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<number, string>>({});
 
   // Création des lignes initiales avec toutes les bobines détectées
@@ -238,7 +236,7 @@ const NiveauLignePage = () => {
       return;
     }
 
-    setLoading(true);
+  setSaving(true);
     const { bobine, ...rest } = rows[rowIndex];
 
     const dataToSend = {
@@ -273,7 +271,7 @@ const NiveauLignePage = () => {
       console.error("Erreur lors de la sauvegarde :", err);
       alert("❌ Erreur de communication avec le serveur.");
     } finally {
-      setLoading(false);
+  setSaving(false);
     }
   };
 
@@ -488,9 +486,9 @@ const NiveauLignePage = () => {
                   <button
                     onClick={() => handleSave(rowIndex)}
                     className="bg-green-600 text-white px-4 py-2 rounded shadow text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={loading || disableActions}
+                    disabled={saving || disableActions}
                   >
-                    {loading ? "..." : "Enregistrer"}
+                    {saving ? "..." : "Enregistrer"}
                   </button>
                 </td>
                 <td className="p-2 border text-center">

@@ -1,9 +1,8 @@
 // TEMPORARY DATA (backward-compat)
-// This shim exposes `role` for legacy components but should be replaced by Clerk-based role usage.
-export let role = "admin"; // fallback
+// Default role for components that need a fallback
+export let role = "NORMAL_USER"; // fallback
 
-// Attempt to read Clerk role on client safely (for components importing this module in the browser)
-// Note: This is a soft shim; authoritative role resolution should use roleUtils with Clerk hooks/server.
+// Attempt to read role from localStorage (for client-side components)
 if (typeof window !== "undefined") {
   try {
     const raw = window.localStorage.getItem("coficab.role");

@@ -1,8 +1,7 @@
 "use client";
 
-import { getUserRoleFromUser } from "@/lib/roleUtils";
-import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
+import { useAuth } from "../../../../lib/auth-hooks";
 import FormModal from "../../../components/FormModal";
 import Pagination from "../../../components/Pagination";
 import Table from "../../../components/Table";
@@ -48,8 +47,7 @@ const columns = [
 ];
 
 const EventListPage = () => {
-  const { user } = useUser();
-  const role = getUserRoleFromUser(user);
+  const { user } = useAuth();
   const renderRow = (item: Event) => (
     <tr
       key={item.id}
@@ -62,7 +60,7 @@ const EventListPage = () => {
       <td className="hidden md:table-cell">{item.endTime}</td>
       <td>
         <div className="flex items-center gap-2">
-          {role === "SUPERADMIN" && (
+          {user?.role === "SUPERADMIN" && (
             <>
               <FormModal table="event" type="update" data={item} />
               <FormModal table="event" type="delete" id={item.id} />
@@ -87,7 +85,7 @@ const EventListPage = () => {
             <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaYellow">
               <Image src="/sort.png" alt="" width={14} height={14} />
             </button>
-            {role === "SUPERADMIN" && <FormModal table="event" type="create" />}
+            {user?.role === "SUPERADMIN" && <FormModal table="event" type="create" />}
           </div>
         </div>
       </div>

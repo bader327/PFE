@@ -1,27 +1,44 @@
 import { Db, MongoClient } from "mongodb";
 
-// Use connection string from .env file
+// Connection string precedence: DATABASE_URL (Prisma) -> MONGODB_URI -> fallback local
 const uri =
-  process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/pfe_dashboard";
-const dbName = uri.split("/").pop() || "pfe_dashboard";
+  process.env.DATABASE_URL ||
+  process.env.MONGODB_URI ||
+  "mongodb://127.0.0.1:27017/pfe_dashboard";
 
-// Create a new MongoClient instance with options
-const client = new MongoClient(uri, {
+function extractDbName(connectionString: string): string {
+  // Grab everything after last '/' then strip query params & auth info if any
+  const afterSlash = connectionString.substring(
+    connectionString.lastIndexOf("/") + 1
+  );
+  return afterSlash.split("?")[0] || "pfe_dashboard";
+}
+
+const dbName = extractDbName(uri);
+
+// Reuse a single client across hot reloads in dev (Next.js recommended pattern)
+// @ts-ignore
+let globalWithMongo = global as typeof global & { _mongoClient?: MongoClient; _mongoDb?: Db };
+
+const client: MongoClient = globalWithMongo._mongoClient || new MongoClient(uri, {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
 });
+if (!globalWithMongo._mongoClient) {
+  globalWithMongo._mongoClient = client;
+}
 
-let db: Db;
+let db: Db | undefined = globalWithMongo._mongoDb;
 
-// Function to handle database connection
 export async function connectToDatabase(): Promise<Db> {
   try {
     if (!db) {
       await client.connect();
       db = client.db(dbName);
       await db.command({ ping: 1 });
-      console.log("Successfully connected to MongoDB.");
+      globalWithMongo._mongoDb = db; // cache
+      console.log(`MongoDB connected (db: ${dbName})`);
     }
     return db;
   } catch (error) {

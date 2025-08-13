@@ -1,10 +1,9 @@
 "use client";
 
-import { getUserRoleFromUser } from "@/lib/roleUtils";
-import { useUser } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../../../lib/auth-hooks";
 
 interface FpsRecord {
   _id?: string;
@@ -47,18 +46,17 @@ const Niveau1: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fpsId = searchParams.get("id") || "";
-  const { user, isLoaded } = useUser();
-  const role = getUserRoleFromUser(user);
-  const disableInputs = !isLoaded || role === "CHEF_ATELIER"; // read-only for CHEF_ATELIER
-  const disableActions = disableInputs; // same policy for action buttons
-
-  const [loading, setLoading] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const [dataLoading, setDataLoading] = useState(true); // distinct from saving actions
+  const [saving, setSaving] = useState(false);
+  const disableInputs = authLoading || user?.role === "CHEF_ATELIER"; // read-only for CHEF_ATELIER
+  const disableActions = disableInputs || saving || dataLoading; // also disable if initial data still loading
   const [error, setError] = useState<string | null>(null);
   const [fpsData, setFpsData] = useState<FpsRecord[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      setDataLoading(true);
       try {
         const res = await fetch(`/api/fps?id=${fpsId}&level=1`, {
           cache: "no-store", // ⬅️ empêche le cache
@@ -69,7 +67,7 @@ const Niveau1: React.FC = () => {
       } catch (e) {
         setError(e instanceof Error ? e.message : "Erreur inconnue");
       } finally {
-        setLoading(false);
+        setDataLoading(false);
       }
     };
     fetchData();
@@ -94,7 +92,7 @@ const Niveau1: React.FC = () => {
   const handleSave = async (index: number) => {
   if (disableActions) return;
     const record = fpsData[index];
-    setLoading(true);
+    setSaving(true);
     try {
       const method = record._id ? "PUT" : "POST";
       const res = await fetch("/api/fps", {
@@ -111,7 +109,7 @@ const Niveau1: React.FC = () => {
     } catch (e) {
       alert(e instanceof Error ? e.message : "Erreur inconnue");
     } finally {
-      setLoading(false);
+  setSaving(false);
     }
   };
 
@@ -137,7 +135,7 @@ const Niveau1: React.FC = () => {
         </button>
       </div>
 
-      {loading ? (
+  {dataLoading ? (
         <div className="flex justify-center items-center h-40">
           <Loader2 className="animate-spin w-10 h-10 text-blue-600" />
         </div>

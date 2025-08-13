@@ -27,18 +27,24 @@ model Event {
 
 model User {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
+  firstName String
+  lastName  String
+  username  String   @unique
   email     String   @unique
+  phone     String?
   password  String
-  userType  UserType
-  ligneId   String?  @db.ObjectId
-  ligne     Ligne?   @relation(fields: [ligneId], references: [id])
+  role      Role
+  ligneIds  String[] @db.ObjectId
+  lignes    Ligne[]  @relation(fields: [ligneIds], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Ligne {
   id            String         @id @default(auto()) @map("_id") @db.ObjectId
   name          String
-  users         User[]
+  userIds       String[]       @db.ObjectId
+  users         User[]         @relation(fields: [userIds], references: [id])
   announcements Announcement[]
   events        Event[]
   files         File[]
@@ -126,7 +132,9 @@ model Fps3 {
   pdfPath               String?
 }
 
-enum UserType {
-  CHEF_ATELIER
+enum Role {
+  SUPERADMIN
   QUALITICIEN
+  CHEF_ATELIER
+  NORMAL_USER
 }

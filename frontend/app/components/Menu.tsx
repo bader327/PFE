@@ -1,12 +1,12 @@
 "use client";
-import { getUserRoleFromUser } from "@/lib/roleUtils";
-import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 // Exemple de nombre de réclamations non lues (à remplacer par appel réel)
 const reclamationsCount = 3;
 
+// NOTE: We add NORMAL_USER to basic items so the sidebar is never empty after auth.
 const menuItems = [
   {
     title: "MENU",
@@ -15,7 +15,7 @@ const menuItems = [
         icon: "/home.png",
         label: "Home",
         href: "/",
-        visible: ["SUPERADMIN", "QUALITICIEN", "CHEF_ATELIER"],
+  visible: ["SUPERADMIN", "QUALITICIEN", "CHEF_ATELIER", "NORMAL_USER"],
       },
       {
         icon: "/calendar.png",
@@ -51,15 +51,37 @@ const menuItems = [
         icon: "/logout.png",
         label: "Logout",
         href: "/logout",
-        visible: ["SUPERADMIN", "QUALITICIEN", "CHEF_ATELIER"],
+        visible: ["SUPERADMIN", "QUALITICIEN", "CHEF_ATELIER", "NORMAL_USER"],
       },
     ],
   },
 ];
 
 const Menu = () => {
-  const { user } = useUser();
-  const role = getUserRoleFromUser(user);
+  const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/user", { cache: "no-store" });
+        if (!res.ok) throw new Error("user fetch failed");
+        const data = await res.json();
+        if (!ignore) {
+          setRole(data?.user?.role || "NORMAL_USER");
+        }
+      } catch (e) {
+        if (!ignore) setRole("NORMAL_USER");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+  
   return (
     <div className="mt-4 text-sm">
       {menuItems.map((section) => (
@@ -67,7 +89,12 @@ const Menu = () => {
           <span className="hidden lg:block text-gray-400 font-light my-4">
             {section.title}
           </span>
-          {section.items.map((item) => (
+          {loading && (
+            <div className="text-gray-400 text-xs px-2">Loading menu...</div>
+          )}
+          {!loading && section.items
+            .filter(item => role ? item.visible.includes(role) : true)
+            .map((item) => (
             <Link
               href={item.href}
               key={item.label}

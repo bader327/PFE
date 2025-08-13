@@ -1,9 +1,6 @@
-import { MongoClient, ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
-
-// Use connection string from .env file
-const uri =
-  process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/pfe_dashboard";
+import { connectToDatabase } from "../../lib/setupDB";
 
 interface Event {
   _id: ObjectId;
@@ -14,20 +11,15 @@ interface Event {
 }
 
 export async function GET(req: Request) {
-  const client = new MongoClient(uri);
   try {
-    await client.connect();
-    const db = client.db();
+    const db = await connectToDatabase();
 
     // Parse query parameters
     const { searchParams } = new URL(req.url);
     const ligneId = searchParams.get("ligneId");
 
     // Build filter based on ligneId
-    const filter: any = {};
-    if (ligneId) {
-      filter.ligneId = ligneId;
-    }
+  const filter: any = ligneId ? { ligneId } : {};
 
     const events = await db
       .collection("Event")
@@ -38,17 +30,11 @@ export async function GET(req: Request) {
     return NextResponse.json(events);
   } catch (error) {
     console.error("Error fetching events:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch events" },
-      { status: 500 }
-    );
-  } finally {
-    await client.close();
+    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
-  const client = new MongoClient(uri);
   try {
     const { title, description, date } = await req.json();
 
@@ -59,8 +45,7 @@ export async function POST(req: Request) {
       );
     }
 
-    await client.connect();
-    const db = client.db();
+  const db = await connectToDatabase();
 
     const event = {
       _id: new ObjectId(),
@@ -74,17 +59,11 @@ export async function POST(req: Request) {
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
     console.error("Error creating event:", error);
-    return NextResponse.json(
-      { error: "Failed to create event" },
-      { status: 500 }
-    );
-  } finally {
-    await client.close();
+    return NextResponse.json({ error: "Failed to create event" }, { status: 500 });
   }
 }
 
 export async function PUT(req: Request) {
-  const client = new MongoClient(uri);
   try {
     const { id, title, description, date } = await req.json();
 
@@ -95,8 +74,7 @@ export async function PUT(req: Request) {
       );
     }
 
-    await client.connect();
-    const db = client.db();
+  const db = await connectToDatabase();
 
     const result = await db.collection("Event").updateOne(
       { _id: new ObjectId(id) },
@@ -116,17 +94,11 @@ export async function PUT(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error updating event:", error);
-    return NextResponse.json(
-      { error: "Failed to update event" },
-      { status: 500 }
-    );
-  } finally {
-    await client.close();
+    return NextResponse.json({ error: "Failed to update event" }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request) {
-  const client = new MongoClient(uri);
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -135,8 +107,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
-    await client.connect();
-    const db = client.db();
+  const db = await connectToDatabase();
 
     const result = await db.collection("Event").deleteOne({
       _id: new ObjectId(id),
@@ -149,11 +120,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting event:", error);
-    return NextResponse.json(
-      { error: "Failed to delete event" },
-      { status: 500 }
-    );
-  } finally {
-    await client.close();
+    return NextResponse.json({ error: "Failed to delete event" }, { status: 500 });
   }
 }

@@ -22,10 +22,15 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const ligneId = searchParams.get("ligneId");
 
-    // Build filter based on ligneId
+    // Build filter based on ligneId (only include when provided)
     const filter: any = {};
-
-    filter.ligneId = ligneId ?? null;
+    if (ligneId) {
+      filter.ligneId = ligneId;
+    }
+    // Debug: log filter once (dev only)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Announcements][GET] filter =', filter);
+    }
 
     const announcements = await db
       .collection("Announcement")

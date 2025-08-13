@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
-import {
-  ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from "@clerk/nextjs";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,21 +16,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={inter.className}>
-          <header className="flex justify-end items-center p-4 gap-4 h-16">
-            <SignedOut>
-              <SignInButton />
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-          </header>
+    <html lang="en">
+      <body className={inter.className}>
+        <header className="flex justify-end items-center p-4 gap-4 h-16">
+          <Link href="/api/auth/signin" className="text-blue-600 hover:text-blue-800">
+            Sign In
+          </Link>
+        </header>
 
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        {children}
+      </body>
+    </html>
   );
 }

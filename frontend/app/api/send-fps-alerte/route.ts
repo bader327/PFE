@@ -1,7 +1,6 @@
-import { normalizeRole } from "@/lib/roleUtils";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { getAuthUser } from "../../../lib/auth";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
@@ -27,11 +26,11 @@ function escapeHtml(text: string) {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    const user = await currentUser();
-    const role = normalizeRole((user?.publicMetadata as any)?.userType || (user?.unsafeMetadata as any)?.userType);
-    if (!(role === "QUALITICIEN" || role === "SUPERADMIN")) {
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    
+  const role = user.role;
+  if (!(role === "QUALITICIEN" || role === "CHEF_ATELIER" || role === "SUPERADMIN")) {
       return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     }
     const body = await req.json();

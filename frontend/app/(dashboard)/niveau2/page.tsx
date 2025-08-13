@@ -1,27 +1,26 @@
 "use client";
 
-import { getUserRoleFromUser } from "@/lib/roleUtils";
-import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
+import { useAuth } from "../../../lib/auth-hooks";
 
 // Layout Components
 import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "../../components/ui/resizable";
+import { ScrollArea } from "../../components/ui/scroll-area";
 
 // UI Components
-import { Button } from "@/components/ui/button";
+import { Button } from "../../components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "../../components/ui/card";
+import { Progress } from "../../components/ui/progress";
 
 // Configuration
 import { sections } from "./sections";
@@ -33,10 +32,9 @@ import Page4567 from "./page4567";
 
 export default function Home() {
   // Role-based restrictions: CHEF_ATELIER read-only
-  const { user, isLoaded } = useUser();
-  const role = getUserRoleFromUser(user);
-  const isChefAtelier = role === "CHEF_ATELIER";
-  const disableActions = !isLoaded || isChefAtelier;
+  const { user, loading: authLoading } = useAuth();
+  const isChefAtelier = user?.role === "CHEF_ATELIER";
+  const disableActions = authLoading || isChefAtelier;
   const [currentSection, setCurrentSection] = useState("info");
   const [progress, setProgress] = useState<Record<string, number>>(
     Object.fromEntries(sections.map((section) => [section.id, 0]))

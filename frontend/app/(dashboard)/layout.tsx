@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Menu from "../components/Menu";
 import Navbar from "../components/Navbar";
+import AuthWrapper from "./AuthWrapper";
 
 export default function DashboardLayout({
   children,
@@ -9,6 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
+    <AuthWrapper>
     <div className="h-screen flex">
       {/* LEFT */}
       <div className="w-[16%] p-6 bg-white shadow-md">
@@ -29,6 +31,7 @@ export default function DashboardLayout({
         <Navbar />
         <main className="p-6">{children}</main>
       </div>
-    </div>
+  </div>
+  </AuthWrapper>
   );
 }

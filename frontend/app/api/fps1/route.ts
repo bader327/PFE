@@ -1,21 +1,16 @@
-import { normalizeRole } from "@/lib/roleUtils";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { MongoClient, ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
-
-const client = new MongoClient(process.env.DATABASE_URL!);
+import { getAuthUser } from "../../../lib/auth";
+import { connectToDatabase } from "../../lib/setupDB";
 
 export async function POST(req: Request) {
   try {
-  const { userId } = await auth();
-    if (!userId)
+  const user = await getAuthUser();
+    if (!user)
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    const user = await currentUser();
-    const role = normalizeRole(
-      (user?.publicMetadata as Record<string, unknown> | undefined)?.userType ||
-        (user?.unsafeMetadata as Record<string, unknown> | undefined)?.userType
-    );
-    if (role !== "SUPERADMIN") {
+    
+  const role = user.role;
+  if (role !== "CHEF_ATELIER" && role !== "SUPERADMIN") {
       return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -47,10 +42,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Connect to MongoDB directly
-    await client.connect();
-    const db = client.db();
-    const collection = db.collection("Fps1");
+  // Use shared connection
+  const db = await connectToDatabase();
+  const collection = db.collection("Fps1");
 
     // Insert the document directly
     const newFps = await collection.insertOne({
@@ -65,7 +59,7 @@ export async function POST(req: Request) {
       fpsNiveau1: true,
       fileId: new ObjectId(), // Generate unique fileId to avoid duplicate key error
       createdAt: new Date(),
-      createdBy: userId,
+      createdBy: user.id,
     });
 
     console.log("✅ Données insérées :", newFps);
@@ -89,6 +83,6 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   } finally {
-    await client.close();
+    // no-op (shared client)
   }
 }
