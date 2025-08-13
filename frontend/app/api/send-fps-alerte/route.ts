@@ -1,3 +1,5 @@
+import { normalizeRole } from "@/lib/roleUtils";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
@@ -25,6 +27,13 @@ function escapeHtml(text: string) {
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    const user = await currentUser();
+    const role = normalizeRole((user?.publicMetadata as any)?.userType || (user?.unsafeMetadata as any)?.userType);
+    if (!(role === "QUALITICIEN" || role === "SUPERADMIN")) {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
     const body = await req.json();
     console.log("Requête reçue dans /api/send-fps-alert :", body);
     const { operateur, defaut, produit, numeroBobine, cause, actions } = body;

@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserRoleFromUser } from "@/lib/roleUtils";
+import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -111,6 +113,17 @@ const inputFieldStyle =
 const NiveauLignePage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, isLoaded } = useUser();
+  const userRole = getUserRoleFromUser(user);
+
+  const isLoadingUser = !isLoaded;
+  const isQualiticien = userRole === "QUALITICIEN";
+  const isChefAtelier = userRole === "CHEF_ATELIER";
+  const isSuperAdmin = userRole === "SUPERADMIN";
+  // Controls
+  const disableText = isLoadingUser || isQualiticien || isChefAtelier; // QUALITICIEN & CHEF_ATELIER cannot edit text inputs
+  const disableCheckbox = isLoadingUser || isChefAtelier; // CHEF_ATELIER cannot toggle checkbox; QUALITICIEN can
+  const disableActions = isLoadingUser || isQualiticien || isChefAtelier; // disable add/save/fps for QUALITICIEN & CHEF_ATELIER
 
   // Récupération de tous les paramètres de bobines et défauts
   const bobinesFromUrl = searchParams.getAll("bobine");
@@ -161,6 +174,7 @@ const NiveauLignePage = () => {
     field: keyof Omit<Row, "actions">,
     value: string
   ) => {
+  if (disableText) return; // Restricted roles cannot edit text inputs
     const newRows = [...rows];
     newRows[rowIndex][field] = value;
     if (field === "defaut") newRows[rowIndex].cause = "";
@@ -179,6 +193,12 @@ const NiveauLignePage = () => {
     field: keyof Action,
     value: string | boolean
   ) => {
+  // Restrict based on field type
+  if (field === "description") {
+    if (disableText) return;
+  } else if (field === "resolu") {
+    if (disableCheckbox) return;
+  }
     const newRows = [...rows];
     if (field === "description" && typeof value === "string") {
       newRows[rowIndex].actions[actionIndex].description = value;
@@ -189,12 +209,14 @@ const NiveauLignePage = () => {
   };
 
   const addAction = (rowIndex: number) => {
+  if (disableActions) return;
     const newRows = [...rows];
     newRows[rowIndex].actions.push({ description: "", resolu: false });
     setRows(newRows);
   };
 
   const addRow = () => {
+  if (disableActions) return;
     setRows([
       ...rows,
       {
@@ -209,6 +231,7 @@ const NiveauLignePage = () => {
   };
 
   const handleSave = async (rowIndex: number) => {
+  if (disableActions) return;
     const error = validateRow(rows[rowIndex]);
     if (error) {
       setErrors({ ...errors, [rowIndex]: error });
@@ -255,6 +278,7 @@ const NiveauLignePage = () => {
   };
 
   const handlePasserAuFPS = async () => {
+  if (isQualiticien) return;
     const rowToSend = rows.find(
       (row) =>
         row.operateur ||
@@ -363,6 +387,7 @@ const NiveauLignePage = () => {
                   <input
                     className={inputFieldStyle}
                     value={row.operateur}
+                    disabled={disableText}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "operateur", e.target.value)
                     }
@@ -373,6 +398,7 @@ const NiveauLignePage = () => {
                     list="defautsList"
                     className={inputFieldStyle}
                     value={row.defaut}
+                    disabled={disableText}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "defaut", e.target.value)
                     }
@@ -382,6 +408,7 @@ const NiveauLignePage = () => {
                   <input
                     className={inputFieldStyle}
                     value={row.produit}
+                    disabled={disableText}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "produit", e.target.value)
                     }
@@ -391,6 +418,7 @@ const NiveauLignePage = () => {
                   <input
                     className={inputFieldStyle}
                     value={row.bobine}
+                    disabled={disableText}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "bobine", e.target.value)
                     }
@@ -401,6 +429,7 @@ const NiveauLignePage = () => {
                     list="causesList"
                     className={inputFieldStyle}
                     value={row.cause}
+                    disabled={disableText}
                     onChange={(e) =>
                       handleInputChange(rowIndex, "cause", e.target.value)
                     }
@@ -419,6 +448,7 @@ const NiveauLignePage = () => {
                         list="actionsList"
                         className={inputFieldStyle}
                         value={action.description}
+                        disabled={disableText}
                         onChange={(e) =>
                           handleActionChange(
                             rowIndex,
@@ -432,6 +462,7 @@ const NiveauLignePage = () => {
                         <input
                           type="checkbox"
                           checked={action.resolu}
+                          disabled={disableCheckbox}
                           onChange={(e) =>
                             handleActionChange(
                               rowIndex,
@@ -447,7 +478,8 @@ const NiveauLignePage = () => {
                   ))}
                   <button
                     onClick={() => addAction(rowIndex)}
-                    className="text-blue-600 hover:underline text-sm mt-2"
+                    className="text-blue-600 hover:underline text-sm mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={disableActions}
                   >
                     + Ajouter une action
                   </button>
@@ -455,8 +487,8 @@ const NiveauLignePage = () => {
                 <td className="p-2 border text-center">
                   <button
                     onClick={() => handleSave(rowIndex)}
-                    className="bg-green-600 text-white px-4 py-2 rounded shadow text-sm"
-                    disabled={loading}
+                    className="bg-green-600 text-white px-4 py-2 rounded shadow text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading || disableActions}
                   >
                     {loading ? "..." : "Enregistrer"}
                   </button>
@@ -464,7 +496,8 @@ const NiveauLignePage = () => {
                 <td className="p-2 border text-center">
                   <button
                     onClick={handlePasserAuFPS}
-                    className="bg-red-600 text-white px-4 py-2 rounded shadow text-sm"
+                    className="bg-red-600 text-white px-4 py-2 rounded shadow text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={disableActions}
                   >
                     FPS
                   </button>
@@ -477,7 +510,8 @@ const NiveauLignePage = () => {
       <div className="text-center mt-6">
         <button
           onClick={addRow}
-          className="bg-blue-600 text-white px-6 py-2 rounded-xl shadow"
+          className="bg-blue-600 text-white px-6 py-2 rounded-xl shadow disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={disableActions}
         >
           + Ajouter une ligne
         </button>

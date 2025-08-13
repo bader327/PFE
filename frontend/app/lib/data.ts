@@ -1,6 +1,17 @@
-// TEMPORARY DATA
+// TEMPORARY DATA (backward-compat)
+// This shim exposes `role` for legacy components but should be replaced by Clerk-based role usage.
+export let role = "admin"; // fallback
 
-export let role = "admin";
+// Attempt to read Clerk role on client safely (for components importing this module in the browser)
+// Note: This is a soft shim; authoritative role resolution should use roleUtils with Clerk hooks/server.
+if (typeof window !== "undefined") {
+  try {
+    const raw = window.localStorage.getItem("coficab.role");
+    if (raw) role = raw as typeof role;
+  } catch {
+    // ignore
+  }
+}
 
 export const teachersData = [
   {
@@ -70,3 +81,13 @@ export const teachersData = [
     address: "Sousse, Tunisie",
   },
 ];
+
+// Minimal events dataset to satisfy imports without altering pages
+export const eventsData: Array<{
+  id: number;
+  title: string;
+  class: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}> = [];

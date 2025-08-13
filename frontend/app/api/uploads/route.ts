@@ -26,6 +26,28 @@ interface FileDocument {
   fps?: any[];
 }
 
+// Types to represent the two possible shapes coming from processExcelFile
+type LigneMetrics = {
+  produitsConformes: number;
+  produitsNonConformes: number;
+  bobinesIncompletes: number;
+  serialsNOK: number[];
+  serialsIncomplets: number[];
+  alertes: string[];
+  ftq: number;
+  tauxDeProduction: number;
+  tauxderejets: number;
+  productionCible: number;
+  detectedFpsArr: any[];
+};
+
+type SingleLineResult = LigneMetrics & { bobinesData: any[] };
+type MultiLineResult = { bobinesData: any[] } & Record<string, LigneMetrics | undefined>;
+
+function isSingleLineResult(x: any): x is SingleLineResult {
+  return x && typeof x.produitsConformes === "number" && Array.isArray(x.bobinesData);
+}
+
 function mapFileResult(fileResult: { bobinesData: any; produitsConformes: any; produitsNonConformes: any; bobinesIncompletes: any; serialsNOK: any; serialsIncomplets: any; alertes: any; ftq: any; tauxDeProduction: any; tauxderejets: any; detectedFpsArr: any; }) {
   const {
     bobinesData,
@@ -85,7 +107,7 @@ export async function POST(req: Request) {
     const filename = `${Date.now()}-${file.name}`;
     try {
       // Process Excel file from buffer
-      const fileResult = await processExcelFile(fileBuffer.buffer);
+  const fileResult: unknown = await processExcelFile(fileBuffer.buffer);
       // Connect to MongoDB
       db = await connectToDatabase();
       let resultToSave: any = {
@@ -95,7 +117,7 @@ export async function POST(req: Request) {
         uploadedAt: new Date(),
         fileDate,
       };
-      let { bobinesData }: { bobinesData: any } = fileResult;
+      let bobinesData: any[] = (fileResult as any).bobinesData ?? [];
       if (ligneId) {
         console.log("heere inside ligne");
         const {
@@ -109,7 +131,7 @@ export async function POST(req: Request) {
           tauxDeProduction,
           tauxderejets,
           detectedFpsArr,
-        } = fileResult;
+        } = (fileResult as SingleLineResult);
         console.log(
           produitsConformes,
           produitsNonConformes,
@@ -135,8 +157,8 @@ export async function POST(req: Request) {
         for (let i = 1; i <= 6; ++i) {
           let ligneId = `ligne_${i}`;
           console.log(ligneId);
-          console.log(ligneId in fileResult, "heree ");
-          if (ligneId in fileResult) {
+          console.log(ligneId in (fileResult as Record<string, unknown>), "heree ");
+          if ((fileResult as MultiLineResult)[ligneId]) {
             const {
               produitsConformes,
               produitsNonConformes,
@@ -148,7 +170,7 @@ export async function POST(req: Request) {
               tauxDeProduction,
               tauxderejets,
               detectedFpsArr,
-            } = fileResult[`${ligneId}`];
+            } = (fileResult as MultiLineResult)[ligneId]!;
             resultToSave = {
               ...resultToSave,
               [ligneId]: {
@@ -207,7 +229,7 @@ export async function POST(req: Request) {
           detectedFps: resultToSave.detectedFps,
         });
       } else {
-        let response: any = { fileId: fileId.toString, success: true };
+        let response: any = { fileId: fileId.toString(), success: true };
         console.log(resultToSave);
         console.log("response ", response);
         for (let i = 1; i <= 6; ++i) {

@@ -1,10 +1,14 @@
+"use client";
+
+import { getUserRoleFromUser } from "@/lib/roleUtils";
+import { useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
-import { role, teachersData } from "../../../lib/data";
 import FormModal from "../../../components/FormModal";
-import TableSearch from "../../../components/TableSearch";
 import Pagination from "../../../components/Pagination";
 import Table from "../../../components/Table";
+import TableSearch from "../../../components/TableSearch";
+import { teachersData } from "../../../lib/data";
 
 type Teacher = {
   id: number;
@@ -27,6 +31,8 @@ const columns = [
 ];
 
 const TeacherListPage = () => {
+  const { user } = useUser();
+  const role = getUserRoleFromUser(user);
   const renderRow = (item: Teacher) => (
     <tr
       key={item.id}
@@ -61,7 +67,7 @@ const TeacherListPage = () => {
               <Image src="/view.png" alt="view" width={16} height={16} />
             </button>
           </Link>
-          {role === "admin" && (
+          {role === "SUPERADMIN" && (
             <FormModal table="teacher" type="delete" id={item.id} />
           )}
         </div>
@@ -83,7 +89,7 @@ const TeacherListPage = () => {
             <button className="w-9 h-9 flex items-center justify-center rounded-full bg-yellow-400 hover:bg-yellow-500 transition">
               <Image src="/sort.png" alt="sort" width={14} height={14} />
             </button>
-            {role === "admin" && <FormModal table="teacher" type="create" />}
+            {role === "SUPERADMIN" && <FormModal table="teacher" type="create" />}
           </div>
         </div>
       </div>

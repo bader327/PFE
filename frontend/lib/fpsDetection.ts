@@ -51,7 +51,7 @@ export function checkFpsConditions(bobinesData: BobineData[], hourlyData?: Hourl
       severity: 'high',
       defaut: criticalBobine?.defectType || 'Multiple quality issues detected',
       produit: criticalBobine?.productType,
-      numeroBobine: criticalBobine?.id
+      numeroBobine: criticalBobine?.numero
     };
   }
 

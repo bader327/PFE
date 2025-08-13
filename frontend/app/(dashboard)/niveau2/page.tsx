@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserRoleFromUser } from "@/lib/roleUtils";
+import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
 
 // Layout Components
@@ -30,6 +32,11 @@ import Page171819202122 from "./page171819202122";
 import Page4567 from "./page4567";
 
 export default function Home() {
+  // Role-based restrictions: CHEF_ATELIER read-only
+  const { user, isLoaded } = useUser();
+  const role = getUserRoleFromUser(user);
+  const isChefAtelier = role === "CHEF_ATELIER";
+  const disableActions = !isLoaded || isChefAtelier;
   const [currentSection, setCurrentSection] = useState("info");
   const [progress, setProgress] = useState<Record<string, number>>(
     Object.fromEntries(sections.map((section) => [section.id, 0]))
@@ -76,8 +83,10 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <Button variant="outline">Enregistrer</Button>
-                  <Button>Exporter PDF</Button>
+                  <Button variant="outline" disabled={disableActions}>
+                    Enregistrer
+                  </Button>
+                  <Button disabled={disableActions}>Exporter PDF</Button>
                 </div>
               </div>
 
@@ -120,8 +129,13 @@ export default function Home() {
                 </CardContent>
               </Card>
 
-              {/* Main Content Area */}
-              <div className="space-y-6">{renderSection()}</div>
+              {/* Main Content Area (read-only for CHEF_ATELIER) */}
+              <div
+                className={`space-y-6${isChefAtelier ? " pointer-events-none" : ""}`}
+                aria-disabled={isChefAtelier}
+              >
+                {renderSection()}
+              </div>
             </div>
           </ScrollArea>
         </ResizablePanel>

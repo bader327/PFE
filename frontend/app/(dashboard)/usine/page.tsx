@@ -25,16 +25,43 @@ const seuils = {
   tauxRejets: 5, // seuil max
 };
 
-function transformApiResultToKpi(result) {
+// Types légers pour éviter les "any" implicites et normaliser les clés
+type KpiApiResult = {
+  produitsConformes?: number;
+  produitsNonConformes?: number;
+  bobinesIncompletes?: number;
+  ftq?: number;
+  tauxProduction?: number;
+  tauxRejets?: number;
+  tauxderejets?: number;
+  productionCible?: number;
+  targetProduction?: number;
+  serialsNOK?: any;
+  serialsIncomplets?: any;
+  hourlyData?: any;
+};
+
+type KpiStats = {
+  date: Date[] | string[];
+  produitsNonConformes: number[];
+  rejectRate: number[];
+  produitsConformes: number[];
+  ftq: number[];
+  tauxderejets: number[];
+};
+
+function transformApiResultToKpi(result: KpiApiResult) {
   return {
     summary: {
       produitsConformes: result.produitsConformes ?? 0,
       produitsNonConformes: result.produitsNonConformes ?? 0,
       bobinesIncompletes: result.bobinesIncompletes ?? 0,
-      ftq: result.ftq,
+      ftq: result.ftq ?? 0,
       productionRate: result.tauxProduction ?? 0,
-      tauxRejets: result.tauxderejets ?? 0,
-      productionCible: result.targetProduction ?? 0,
+      // supporte tauxRejets et tauxderejets
+      tauxRejets: (result.tauxRejets ?? result.tauxderejets) ?? 0,
+      // supporte productionCible et targetProduction
+      productionCible: (result.productionCible ?? result.targetProduction) ?? 0,
     },
     files: [
       {
@@ -66,12 +93,14 @@ export default function Page() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [kpiStats, setKpiStats] = useState({
+  const [kpiStats, setKpiStats] = useState<KpiStats>({
     date: getWeekDates(),
     produitsNonConformes: new Array(7).fill(0),
-    rejectRate: new Array(7).fill(0),
+  rejectRate: new Array(7).fill(0),
     produitsConformes: new Array(7).fill(0),
     ftq: new Array(7).fill(0),
+  // ajouté pour correspondre aux données weekly retournant "tauxderejets"
+  tauxderejets: new Array(7).fill(0),
   });
   const [kpiData, setKpiData] = useState<any>({
     summary: {
@@ -110,9 +139,9 @@ export default function Page() {
     // seed the rotation
     setLinesData(extracted);
     setCurrentLineIndex(0);
-    console.log("setting kpi data summary");
-    console.log(transformApiResultToKpi(extracted[0].data));
-    setKpiData(transformApiResultToKpi(extracted[0].data));
+  console.log("setting kpi data summary");
+  console.log(transformApiResultToKpi(extracted[0].data as KpiApiResult));
+  setKpiData(transformApiResultToKpi(extracted[0].data as KpiApiResult));
     setError(null);
   };
   // Fonction pour formater la date en chaîne YYYY-MM-DD pour l'API
@@ -208,36 +237,6 @@ export default function Page() {
   }, [selectedDate]);
 
   const [fileName, setFileName] = useState<string | null>(null);
-  const initialKpis = {
-    ftq: 85.3,
-    tauxProduction: 78.5,
-    productionCible: 95.0,
-    tauxRejets: 6.2,
-  };
-  const kpis = initialKpis;
-
-  const kpiList = [
-    { key: "ftq", label: "FTQ (%)", value: kpis.ftq, seuil: seuils.ftq },
-    {
-      key: "tauxProduction",
-      label: "Taux de Production (%)",
-      value: kpis.tauxProduction,
-      seuil: seuils.tauxProduction,
-    },
-    {
-      key: "productionCible",
-      label: "Production Cible",
-      value: kpis.productionCible,
-      seuil: seuils.productionCible,
-    },
-    {
-      key: "tauxRejets",
-      label: "Taux de Rejets (%)",
-      value: kpis.tauxRejets,
-      seuil: seuils.tauxRejets,
-      inverse: true,
-    },
-  ];
 
   // Animations conteneur upload + datepicker
   const containerVariants = {
@@ -323,8 +322,8 @@ export default function Page() {
   // whenever we switch index, re-run transformApiResultToKpi
   useEffect(() => {
     if (!linesData.length) return;
-    let { data } = linesData[currentLineIndex];
-    setKpiData(transformApiResultToKpi(data));
+  let { data } = linesData[currentLineIndex];
+  setKpiData(transformApiResultToKpi(data as KpiApiResult));
     if (linesStats && linesStats.length > currentLineIndex) {
       data = linesStats[currentLineIndex]["data"];
       console.log(data, "hereeee");

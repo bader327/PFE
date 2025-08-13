@@ -18,8 +18,19 @@ export async function GET(req: Request) {
     const endDate = new Date(date);
     endDate.setHours(23, 59, 59, 999);
     
+    // Define the minimal shape we use from File records
+    type FileRow = {
+      uploadedAt: Date;
+      produitsConformes: number;
+      produitsNonConformes: number;
+      bobinesIncompletes: number;
+      ftq: number;
+      tauxProduction: number;
+      tauxRejets: number;
+    };
+
     // Get all files for the specified date and ligne
-    const files = await prisma.file.findMany({
+    const files: FileRow[] = await prisma.file.findMany({
       where: {
         ligneId,
         uploadedAt: {
@@ -48,7 +59,7 @@ export async function GET(req: Request) {
     });
     
     // Fill in data for each hour
-    files.forEach(file => {
+  files.forEach((file) => {
       const hour = new Date(file.uploadedAt).getHours();
       
       hourlyData[hour].produitsConformes += file.produitsConformes;

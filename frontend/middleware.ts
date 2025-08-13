@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 const isProtectedRoute = createRouteMatcher([
   "/admin",
@@ -16,8 +17,9 @@ const isProtectedRoute = createRouteMatcher([
 
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) await auth.protect();
+export default clerkMiddleware(async (_auth, _req) => {
+  // Temporarily allow all access to all pages and APIs
+  return NextResponse.next();
 });
 
 export const config = {

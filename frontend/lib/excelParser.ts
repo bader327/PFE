@@ -1,4 +1,15 @@
 import * as xlsx from "xlsx";
+
+type Bobine = {
+  numero: number;
+  produit: string;
+  conforme: boolean;
+  nonConforme: boolean;
+  incomplete: boolean;
+  reportType: string;
+  defauts: string[];
+  idLigne: string | number;
+};
 export async function processExcelFile(
   fileBuffer: ArrayBuffer,
   isUsine: boolean = false
@@ -7,7 +18,7 @@ export async function processExcelFile(
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const jsonData = xlsx.utils.sheet_to_json(sheet, { defval: "" });
   // console.log("json ", jsonData);
-  const bobinesData = jsonData.map((row: any) => ({
+  const bobinesData: Bobine[] = jsonData.map((row: any): Bobine => ({
     numero: (row["Serial Number"] as number) || -1,
     produit: row["Item"] || "",
     conforme: row["FinalStatus"].toUpperCase() === "OK",
@@ -31,8 +42,8 @@ export async function processExcelFile(
     return { ...getResultForLigne(bobinesData), bobinesData };
   }
 
-  const mapper: any = {};
-  const result: any = { bobinesData };
+  const mapper: Record<string | number, string> = {};
+  const result: Record<string, any> = { bobinesData };
 
   for (let i = 1; i <= existingLinesInCsvFile.length; ++i) {
     mapper[existingLinesInCsvFile[i - 1]] = `ligne_${i}`;
@@ -53,17 +64,17 @@ function checkConditionFPS(defaultsPerBobine: string[][]): boolean {
   return defaultsCondition;
 }
 
-function getResultForLigne(bobinesData) {
-  const produitsConformes = bobinesData.filter((b) => b.conforme).length;
-  const produitsNonConformes = bobinesData.filter((b) => b.nonConforme).length;
-  const bobinesIncompletes = bobinesData.filter((b) => b.incomplete).length;
+function getResultForLigne(bobinesData: Bobine[]) {
+  const produitsConformes = bobinesData.filter((b: Bobine) => b.conforme).length;
+  const produitsNonConformes = bobinesData.filter((b: Bobine) => b.nonConforme).length;
+  const bobinesIncompletes = bobinesData.filter((b: Bobine) => b.incomplete).length;
 
   const serialsNOK = bobinesData
-    .filter((b) => b.nonConforme)
-    .map((b) => b.numero);
+    .filter((b: Bobine) => b.nonConforme)
+    .map((b: Bobine) => b.numero);
   const serialsIncomplets = bobinesData
-    .filter((b) => b.incomplete)
-    .map((b) => b.numero);
+    .filter((b: Bobine) => b.incomplete)
+    .map((b: Bobine) => b.numero);
 
   const alertes = [];
 
@@ -74,7 +85,7 @@ function getResultForLigne(bobinesData) {
   const detectedFpsArr = [];
   // sort bobine data ascendingly based on numero
   const filteredBobineData = bobinesData.filter(
-    (bobine) => bobine.reportType.toUpperCase() !== "SETUP"
+    (bobine: Bobine) => bobine.reportType.toUpperCase() !== "SETUP"
   );
   const bobineSize = filteredBobineData.length;
   for (
@@ -88,11 +99,11 @@ function getResultForLigne(bobinesData) {
         ? filteredBobineData.slice(bobineIndice, bobineIndice + 3)
         : [];
 
-    const defaultsTypes = firstConditionArray.map((e) => e.defauts);
+  const defaultsTypes = firstConditionArray.map((e: Bobine) => e.defauts);
     const fpsOneDetected = checkConditionFPS(defaultsTypes);
 
     const firstNonEmptyDefaut = filteredBobineData[bobineIndice].defauts.reduce(
-      (acc, cur) => {
+      (acc: string | undefined, cur: string) => {
         return acc ?? cur;
       }
     );

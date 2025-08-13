@@ -1,5 +1,6 @@
+import animate from "tailwindcss-animate";
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
     darkMode: ["class"],
     content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -14,6 +15,7 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
+				// Keep existing CSS variable-driven palette
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -47,6 +49,13 @@ module.exports = {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
+				// Restore original brand colors used across the app
+				lamaSky: '#C3EBFA',
+				lamaSkyLight: '#EDF9FD',
+				lamaPurple: '#CFCEFF',
+				lamaPurpleLight: '#F1F0FF',
+				lamaYellow: '#FAE27C',
+				lamaYellowLight: '#FEFCE8',
   			chart: {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',
@@ -57,5 +66,5 @@ module.exports = {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+	plugins: [animate],
 };

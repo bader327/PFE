@@ -1,3 +1,5 @@
+import { normalizeRole } from '@/lib/roleUtils';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 
@@ -132,6 +134,13 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await currentUser();
+    const role = normalizeRole(
+      (user?.publicMetadata as any)?.userType || (user?.unsafeMetadata as any)?.userType
+    );
+    if (role !== 'SUPERADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const body = await req.json();
     const { level, ...data } = body;
     
@@ -179,6 +188,13 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await currentUser();
+    const role = normalizeRole(
+      (user?.publicMetadata as any)?.userType || (user?.unsafeMetadata as any)?.userType
+    );
+    if (role !== 'SUPERADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const body = await req.json();
     const { id, level, ...data } = body;
     

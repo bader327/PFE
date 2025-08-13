@@ -1,7 +1,6 @@
 // /app/api/getOneFile/route.ts
-import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
-import { connectToDatabase } from "../uploads/route";
+import { connectToDatabase } from "../../../lib/setupDB";
 
 export async function GET(req: Request) {
   let db;
@@ -24,7 +23,7 @@ export async function GET(req: Request) {
     };
 
     if (ligneId) {
-      whereClause.ligneId = new ObjectId(ligneId);
+      whereClause.ligneId = ligneId;
     }
 
     db = await connectToDatabase();

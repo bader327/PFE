@@ -1,3 +1,5 @@
+import { normalizeRole } from "@/lib/roleUtils";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { MongoClient, ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 
@@ -5,6 +7,18 @@ const client = new MongoClient(process.env.DATABASE_URL!);
 
 export async function POST(req: Request) {
   try {
+  const { userId } = await auth();
+    if (!userId)
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    const user = await currentUser();
+    const role = normalizeRole(
+      (user?.publicMetadata as Record<string, unknown> | undefined)?.userType ||
+        (user?.unsafeMetadata as Record<string, unknown> | undefined)?.userType
+    );
+    if (role !== "SUPERADMIN") {
+      return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await req.json();
 
     const { operateur, defaut, produit, numeroBobine, cause, actions } = body;
@@ -51,6 +65,7 @@ export async function POST(req: Request) {
       fpsNiveau1: true,
       fileId: new ObjectId(), // Generate unique fileId to avoid duplicate key error
       createdAt: new Date(),
+      createdBy: userId,
     });
 
     console.log("✅ Données insérées :", newFps);

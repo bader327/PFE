@@ -176,10 +176,10 @@ export default function CalendarEventsAndAnnouncements({
             selected={selectedDate}
             onSelect={(date: Date | undefined) => {
               console.log(date);
-              if (onCalendarDateChange) {
-                onCalendarDateChange(date);
+              if (date) {
+                onCalendarDateChange?.(date);
+                setSelectedDate(date);
               }
-              date && setSelectedDate(date);
             }}
             className="mx-auto"
             modifiers={{

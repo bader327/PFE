@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { getUserRoleFromUser } from "@/lib/roleUtils";
+import { useUser } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect, useState } from "react";
 
 interface FpsRecord {
   _id?: string;
@@ -45,6 +47,10 @@ const Niveau1: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fpsId = searchParams.get("id") || "";
+  const { user, isLoaded } = useUser();
+  const role = getUserRoleFromUser(user);
+  const disableInputs = !isLoaded || role === "CHEF_ATELIER"; // read-only for CHEF_ATELIER
+  const disableActions = disableInputs; // same policy for action buttons
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,16 +80,19 @@ const Niveau1: React.FC = () => {
     field: keyof FpsRecord,
     value: string
   ) => {
+  if (disableInputs) return;
     const updated = [...fpsData];
     updated[index] = { ...updated[index], [field]: value };
     setFpsData(updated);
   };
 
   const handleAddRow = () => {
+  if (disableActions) return;
     setFpsData((prev) => [...prev, emptyRecord(fpsId)]);
   };
 
   const handleSave = async (index: number) => {
+  if (disableActions) return;
     const record = fpsData[index];
     setLoading(true);
     try {
@@ -121,7 +130,8 @@ const Niveau1: React.FC = () => {
       <div className="mb-4">
         <button
           onClick={handleAddRow}
-          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={disableActions}
         >
           Ajouter une ligne
         </button>
@@ -175,6 +185,7 @@ const Niveau1: React.FC = () => {
                     <td key={field} className="p-2 border min-w-[180px]">
                       <textarea
                         value={(row[field] as string) || ""}
+                        readOnly={disableInputs}
                         onChange={(e) =>
                           handleFieldChange(idx, field, e.target.value)
                         }
@@ -186,7 +197,8 @@ const Niveau1: React.FC = () => {
                   <td className="p-2 border text-center">
                     <button
                       onClick={() => handleSave(idx)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={disableActions}
                     >
                       Enregistrer
                     </button>
@@ -201,6 +213,7 @@ const Niveau1: React.FC = () => {
             <label className="font-semibold block mb-1">Commentaire :</label>
             <textarea
               value={fpsData[0]?.commentaire || ""}
+              readOnly={disableInputs}
               onChange={(e) =>
                 handleFieldChange(0, "commentaire", e.target.value)
               }
@@ -216,6 +229,7 @@ const Niveau1: React.FC = () => {
                 <input
                   type="text"
                   value={fpsData[0]?.respQualiteProcess || ""}
+                  readOnly={disableInputs}
                   onChange={(e) =>
                     handleFieldChange(0, "respQualiteProcess", e.target.value)
                   }
@@ -229,6 +243,7 @@ const Niveau1: React.FC = () => {
                 <input
                   type="text"
                   value={fpsData[0]?.respProduction || ""}
+                  readOnly={disableInputs}
                   onChange={(e) =>
                     handleFieldChange(0, "respProduction", e.target.value)
                   }
@@ -239,7 +254,8 @@ const Niveau1: React.FC = () => {
 
             <button
               onClick={handleNext}
-              className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded"
+              className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={disableActions}
             >
               Niveau 2
             </button>
