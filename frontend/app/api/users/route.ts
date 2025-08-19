@@ -1,5 +1,4 @@
 import { Role } from "@prisma/client";
-import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
 // Using relative path (depth 3 -> frontend root) to avoid alias resolution issues
 import { getAuthUser } from "../../../lib/auth";
@@ -31,23 +30,24 @@ export async function GET() {
         role: true,
         ligneIds: true,
         createdAt: true,
-        updatedAt: true,
-        lignes: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
+        updatedAt: true
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
 
+    // Also return all available lignes so UI has a fallback source
+    const allLignes = await prisma.ligne.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    });
+
     return NextResponse.json(
       { 
         success: true,
-        users
+        users,
+        lignes: allLignes
       },
       { status: 200 }
     );
@@ -87,21 +87,8 @@ export async function POST(request: Request) {
     lastName = String(lastName).trim();
     if (phone) phone = String(phone).trim();
 
-    // Optional: validate ligneIds exist if provided
-    if (Array.isArray(ligneIds) && ligneIds.length > 0) {
-      const existingLignes = await prisma.ligne.findMany({
-        where: { id: { in: ligneIds } },
-        select: { id: true }
-      });
-      const existingIds = new Set(existingLignes.map(l => l.id));
-      const invalid = ligneIds.filter((lid: string) => !existingIds.has(lid));
-      if (invalid.length > 0) {
-        return NextResponse.json(
-          { success: false, message: `Invalid ligneIds: ${invalid.join(', ')}` },
-          { status: 400 }
-        );
-      }
-    }
+    // Skip ligneIds validation to avoid any MongoDB operations that might trigger transactions
+    // We'll just store the ligneIds as provided
 
     const existingUser = await prisma.user.findFirst({
       where: { OR: [{ email }, { username }] }
@@ -114,8 +101,9 @@ export async function POST(request: Request) {
     }
 
     const plainPassword = generatePassword();
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    // Store password as plain text (as requested)
 
+    // Create user with ligneIds directly - simplified single operation
     const user = await prisma.user.create({
       data: {
         firstName,
@@ -123,11 +111,26 @@ export async function POST(request: Request) {
         username,
         email,
         phone: phone || null,
-        password: hashedPassword,
+        password: plainPassword,
         role: role as Role,
         ligneIds: Array.isArray(ligneIds) ? ligneIds : [],
       },
     });
+
+    // Fetch ligne names for response (skip if no ligneIds to avoid potential issues)
+    let ligneNameMap: Record<string, string> = {};
+    if (user.ligneIds.length > 0) {
+      try {
+        const ls = await prisma.ligne.findMany({
+          where: { id: { in: user.ligneIds } },
+          select: { id: true, name: true },
+        });
+        ligneNameMap = Object.fromEntries(ls.map(l => [l.id, l.name]));
+      } catch (error) {
+        console.warn("Could not fetch ligne names:", error);
+        // Continue without ligne names if there's an issue
+      }
+    }
 
     await sendWelcomeEmail(email, firstName, plainPassword);
 
@@ -143,6 +146,7 @@ export async function POST(request: Request) {
         phone: user.phone,
         role: user.role,
         ligneIds: user.ligneIds,
+        lignes: Object.entries(ligneNameMap).map(([id, name]) => ({ id, name }))
       }
     }, { status: 201 });
   } catch (error) {

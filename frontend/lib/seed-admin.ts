@@ -1,5 +1,4 @@
 import { PrismaClient, Role } from '@prisma/client';
-import bcrypt from 'bcrypt';
 import { generatePassword } from './utils';
 
 const prisma = new PrismaClient();
@@ -18,7 +17,7 @@ export async function seedSuperAdmin() {
   let existingByEmail = await prisma.user.findUnique({ where: { email: superAdminEmail } });
 
   const password = process.env.SUPERADMIN_PASSWORD || generatePassword();
-  const hashedPassword = await bcrypt.hash(password, 10);
+  // Store password as plain text (as requested)
 
   if (existingByEmail) {
     // If role not SUPERADMIN or profile fields differ, update them
@@ -45,10 +44,9 @@ export async function seedSuperAdmin() {
       console.log('SUPERADMIN already matches desired configuration');
     }
 
-    // If we intentionally want to enforce the env password, re-hash & update if mismatch
-    const bcryptCompare = await bcrypt.compare(password, existingByEmail.password).catch(() => false);
-    if (!bcryptCompare) {
-      await prisma.user.update({ where: { id: existingByEmail.id }, data: { password: hashedPassword } });
+    // If we intentionally want to enforce the env password, update if mismatch
+    if (password !== existingByEmail.password) {
+      await prisma.user.update({ where: { id: existingByEmail.id }, data: { password: password } });
       console.log('SUPERADMIN password synced from environment');
     }
     return existingByEmail;
@@ -61,7 +59,7 @@ export async function seedSuperAdmin() {
       firstName,
       lastName,
       username,
-      password: hashedPassword,
+      password: password,
       role: Role.SUPERADMIN,
       phone: phoneRaw === '' ? null : phoneRaw,
       ligneIds: [],

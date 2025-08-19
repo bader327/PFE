@@ -35,7 +35,6 @@ model User {
   password  String
   role      Role
   ligneIds  String[] @db.ObjectId
-  lignes    Ligne[]  @relation(fields: [ligneIds], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -44,7 +43,6 @@ model Ligne {
   id            String         @id @default(auto()) @map("_id") @db.ObjectId
   name          String
   userIds       String[]       @db.ObjectId
-  users         User[]         @relation(fields: [userIds], references: [id])
   announcements Announcement[]
   events        Event[]
   files         File[]

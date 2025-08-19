@@ -1,5 +1,4 @@
 import { Role } from "@prisma/client"; // Role enum only
-import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
 import { generateToken } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
@@ -33,8 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Store password as plain text (as requested)
 
     // Create the user with NORMAL_USER role by default
     const user = await prisma.user.create({
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
         lastName,
         username,
         email,
-        password: hashedPassword,
+        password: password,
         role: role || Role.NORMAL_USER,
         ligneIds: [],
       },

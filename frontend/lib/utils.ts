@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 /**
  * Generate a random strong password
@@ -107,4 +109,9 @@ export function getRedirectPathForRole(role: string): string {
     default:
       return '/dashboard';
   }
+}
+
+// Tailwind class merge helper (shadcn style)
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }

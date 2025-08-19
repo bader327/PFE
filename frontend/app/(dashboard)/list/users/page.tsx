@@ -45,8 +45,9 @@ const UsersPage = () => {
     email: "",
     phone: "",
     role: "NORMAL_USER",
-    ligneIds: "", // comma separated
+    ligneIds: [] as string[], // selected ligne ids
   });
+  const [lignes, setLignes] = useState<{ id: string; name: string }[]>([]);
 
   // Fetch users
   useEffect(() => {
@@ -61,6 +62,9 @@ const UsersPage = () => {
         if (!res.ok) throw new Error(data.message || "Failed to load users");
         setUsers(data.users || []);
         setFiltered(data.users || []);
+        if ((data.lignes?.length || 0) > 0) {
+          setLignes((prev) => prev.length === 0 ? data.lignes : prev);
+        }
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -68,6 +72,29 @@ const UsersPage = () => {
       }
     };
     fetchUsers();
+  }, [authUser]);
+
+  // Fetch lignes for selection
+  useEffect(() => {
+    if (!authUser || authUser.role !== 'SUPERADMIN') return;
+    const load = async () => {
+      try {
+        let r = await fetch('/api/lignes');
+        if (r.status === 404) {
+          // fallback path variant
+            r = await fetch('/api/lignes/list');
+        }
+        const d = await r.json().catch(() => ({ lignes: [] }));
+        if (r.ok) {
+          setLignes(d.lignes || []);
+        } else {
+          console.warn('Failed to fetch lignes', r.status, d);
+        }
+      } catch (err) {
+        console.warn('Error fetching lignes', err);
+      }
+    };
+    load();
   }, [authUser]);
 
   // Simple search handler
@@ -89,13 +116,7 @@ const UsersPage = () => {
     setCreating(true);
     setError(null);
     try {
-      const payload = {
-        ...form,
-        ligneIds: form.ligneIds
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      };
+  const payload = { ...form, ligneIds: form.ligneIds };
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,15 +126,7 @@ const UsersPage = () => {
       if (!res.ok) throw new Error(data.message || "Failed to create user");
       setUsers((prev) => [data.user, ...prev]);
       setFiltered((prev) => [data.user, ...prev]);
-      setForm({
-        firstName: "",
-        lastName: "",
-        username: "",
-        email: "",
-        phone: "",
-        role: "NORMAL_USER",
-        ligneIds: "",
-      });
+  setForm({ firstName: "", lastName: "", username: "", email: "", phone: "", role: "NORMAL_USER", ligneIds: [] });
       setShowCreate(false);
     } catch (e: any) {
       setError(e.message);
@@ -152,7 +165,17 @@ const UsersPage = () => {
       <td className="hidden md:table-cell text-gray-700">{item.role}</td>
       <td className="hidden lg:table-cell text-gray-700">{item.phone || "-"}</td>
       <td className="hidden lg:table-cell text-gray-700">
-        {item.lignes?.map((l) => l.name).join(", ") || item.ligneIds.length || "-"}
+        {item.lignes && item.lignes.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {item.lignes.map(l => (
+              <span key={l.id} className="px-2 py-0.5 rounded bg-gray-200 text-[10px] font-medium">
+                {l.name}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">-</span>
+        )}
       </td>
       <td className="p-2">
         {authUser?.role === "SUPERADMIN" && (
@@ -252,12 +275,33 @@ const UsersPage = () => {
               </option>
             ))}
           </select>
-          <input
-            placeholder="Ligne IDs (comma separated)"
-            className="input md:col-span-2"
-            value={form.ligneIds}
-            onChange={(e) => setForm({ ...form, ligneIds: e.target.value })}
-          />
+          <div className="md:col-span-3 flex flex-col gap-2 bg-white p-3 rounded border">
+            <span className="text-xs font-semibold text-gray-600">Assign Lignes</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              {lignes.map(l => {
+                const checked = form.ligneIds.includes(l.id);
+                return (
+                  <label key={l.id} className="flex items-center gap-1 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="accent-yellow-500"
+                      checked={checked}
+                      onChange={() => {
+                        setForm(f => ({
+                          ...f,
+                          ligneIds: checked ? f.ligneIds.filter(id => id !== l.id) : [...f.ligneIds, l.id]
+                        }));
+                      }}
+                    />
+                    <span>{l.name}</span>
+                  </label>
+                );
+              })}
+              {lignes.length === 0 && (
+                <span className="text-gray-400 col-span-full">No lignes</span>
+              )}
+            </div>
+          </div>
           <div className="flex gap-4 md:col-span-3">
             <button
               disabled={creating}

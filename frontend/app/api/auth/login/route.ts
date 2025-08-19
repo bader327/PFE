@@ -1,4 +1,3 @@
-import bcrypt from "bcrypt";
 import { NextResponse } from "next/server";
 import { generateToken } from "../../../../lib/auth";
 import { prisma } from "../../../../lib/prisma";
@@ -27,8 +26,8 @@ export async function POST(request: Request) {
       );
     }
 
-  // Compare password (no auto-sync to avoid write operations)
-  const isPasswordValid = await bcrypt.compare(password, user.password);
+  // Compare password directly without hashing (as requested)
+  const isPasswordValid = password === user.password;
 
     if (!isPasswordValid) {
       return NextResponse.json(
